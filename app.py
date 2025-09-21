@@ -268,6 +268,20 @@ def excluir_cliente_action(id_cliente):
     database_manager.excluir_cliente(id_cliente)
     return redirect(url_for('gerenciar_clientes_view'))
 
+def shutdown_server():
+    """Função para desligar o servidor Flask."""
+    func = request.environ.get('werkzeug.server.shutdown')
+    if func is None:
+        raise RuntimeError('Não está rodando com o servidor Werkzeug')
+    func()
+
+@app.route('/shutdown', methods=['GET'])
+def shutdown():
+    """Rota que chama a função de desligamento."""
+    print("Servidor recebendo solicitação de desligamento...")
+    shutdown_server()
+    return 'Servidor desligando...'
+
 # --- PONTO DE ENTRADA DA APLICAÇÃO ---
 
 if __name__ == '__main__':
