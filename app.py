@@ -11,35 +11,43 @@ from openpyxl.utils import get_column_letter
 import sys
 import os
 import shutil
+from waitress import serve # Importa o servidor de produção Waitress
 
 # --- LÓGICA DE CAMINHOS PARA PYINSTALLER E BANCO DE DADOS ---
 def get_base_path():
+    """ Retorna o caminho base, seja para script ou para executável do PyInstaller. """
     if getattr(sys, 'frozen', False):
+        # Rodando como .exe, o caminho base é onde o executável está
         return os.path.dirname(sys.executable)
     else:
+        # Rodando como .py, o caminho base é o diretório do script
         return os.path.abspath(".")
 
 BASE_PATH = get_base_path()
 DB_NAME = 'database.db'
 DB_PATH = os.path.join(BASE_PATH, DB_NAME)
 
-if getattr(sys, 'frozen', False):
+IS_FROZEN = getattr(sys, 'frozen', False) # Variável para saber se estamos no .exe
+
+if IS_FROZEN:
+    # Se estiver rodando como um executável
     template_folder = os.path.join(sys._MEIPASS, 'templates')
     db_template_path = os.path.join(sys._MEIPASS, DB_NAME)
     if not os.path.exists(DB_PATH):
-        print(f"Banco de dados não encontrado em {DB_PATH}. Copiando modelo inicial...")
         shutil.copyfile(db_template_path, DB_PATH)
-        print(f"Banco de dados inicial copiado para {DB_PATH}")
     app = Flask(__name__, template_folder=template_folder)
 else:
+    # Se estiver rodando como um script normal
     app = Flask(__name__)
 
+# Informa ao database_manager qual arquivo de banco de dados usar
 database_manager.NOME_BANCO_DADOS = DB_PATH
 
+# Definir o locale para português do Brasil
 try:
     locale.setlocale(locale.LC_ALL, 'pt_BR.UTF-8')
 except locale.Error:
-    print("Locale pt_BR.UTF-8 não encontrado. Usando o locale padrão do sistema.")
+    print("Locale pt_BR.UTF-8 não encontrado.")
 
 # --- ROTAS PRINCIPAIS (CALENDÁRIO) ---
 
@@ -143,8 +151,6 @@ def exportar_excel(ano, mes):
         header_font = Font(bold=True, size=14, color="FFFFFF")
         header_fill = PatternFill(start_color="4F81BD", end_color="4F81BD", fill_type="solid")
         header_align = Alignment(horizontal='center', vertical='center')
-        # ... continuação do código anterior ...
-
         day_header_font = Font(bold=True, size=12)
         day_header_fill = PatternFill(start_color="DDEBF7", end_color="DDEBF7", fill_type="solid")
         cell_align = Alignment(horizontal='left', vertical='top', wrap_text=True)
@@ -219,7 +225,7 @@ def exportar_excel(ano, mes):
         ws.merge_cells(start_row=linha_rodape, start_column=1, end_row=linha_rodape, end_column=7)
         rodape_cell = ws.cell(row=linha_rodape, column=1)
         rodape_cell.value = f"Relatório gerado pelo Planejador de Rotas - Desenvolvido por Fabio Sena ({datetime.now().strftime('%d/%m/%Y %H:%M')})"
-        rodape_cell.font = Font(italic=True, size=8, color="808080") # Fonte menor e itálico
+        rodape_cell.font = Font(italic=True, size=8, color="808080")
         rodape_cell.alignment = Alignment(horizontal='right', vertical='center')
         row_offset += 1
 
@@ -268,23 +274,15 @@ def excluir_cliente_action(id_cliente):
     database_manager.excluir_cliente(id_cliente)
     return redirect(url_for('gerenciar_clientes_view'))
 
-def shutdown_server():
-    """Função para desligar o servidor Flask."""
-    func = request.environ.get('werkzeug.server.shutdown')
-    if func is None:
-        raise RuntimeError('Não está rodando com o servidor Werkzeug')
-    func()
-
-@app.route('/shutdown', methods=['GET'])
-def shutdown():
-    """Rota que chama a função de desligamento."""
-    print("Servidor recebendo solicitação de desligamento...")
-    shutdown_server()
-    return 'Servidor desligando...'
-
 # --- PONTO DE ENTRADA DA APLICAÇÃO ---
 
 if __name__ == '__main__':
     database_manager.inicializar() 
-    app.run(debug=True)
-
+    if IS_FROZEN:
+        # No executável, use o servidor Waitress para estabilidade
+        print("Iniciando servidor de produção Waitress na porta 5000...")
+        serve(app, host='127.0.0.1', port=5000)
+    else:
+        # No desenvolvimento, use o servidor Flask com debug para facilitar
+        print("Iniciando servidor de desenvolvimento Flask...")
+        app.run(debug=True, host='127.0.0.1', port=5000)
