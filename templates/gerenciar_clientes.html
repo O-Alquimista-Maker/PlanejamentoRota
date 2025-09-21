@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciar Clientes</title>
+    <style>
+        body { font-family: sans-serif; background-color: #f4f4f9; padding: 20px; }
+        .container { max-width: 900px; margin: auto; background-color: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        h1, h2 { color: #333; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+        th { background-color: #f0f0f0; }
+        tr:nth-child(even) { background-color: #f9f9f9; }
+        .actions a, .actions button { margin-right: 5px; text-decoration: none; color: white; padding: 5px 10px; border-radius: 4px; border: none; cursor: pointer; }
+        .edit-btn { background-color: #ffc107; }
+        .delete-btn { background-color: #dc3545; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; }
+        .form-group input { width: 100%; padding: 8px; box-sizing: border-box; }
+        .btn-primary { background-color: #007bff; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; }
+        .nav-link { display: inline-block; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Gerenciar Clientes</h1>
+        <a href="{{ url_for('index_redirect') }}" class="nav-link">&larr; Voltar ao Planejador</a>
+
+        <!-- Formulário para Adicionar Novo Cliente -->
+        <h2>Adicionar Novo Cliente</h2>
+        <form action="{{ url_for('adicionar_cliente_action') }}" method="POST">
+            <div class="form-group">
+                <label for="nome_cliente">Nome do Cliente</label>
+                <input type="text" id="nome_cliente" name="nome_cliente" required>
+            </div>
+            <div class="form-group">
+                <label for="endereco">Endereço</label>
+                <input type="text" id="endereco" name="endereco">
+            </div>
+            <div class="form-group">
+                <label for="telefone">Telefone</label>
+                <input type="text" id="telefone" name="telefone">
+            </div>
+            <button type="submit" class="btn-primary">Adicionar Cliente</button>
+        </form>
+
+        <hr style="margin: 30px 0;">
+
+        <!-- Tabela de Clientes Existentes -->
+        <h2>Clientes Cadastrados</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Nome</th>
+                    <th>Endereço</th>
+                    <th>Telefone</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for cliente in clientes %}
+                <tr>
+                    <form action="{{ url_for('editar_cliente_action', id_cliente=cliente.id) }}" method="POST">
+                        <td>{{ cliente.id }}</td>
+                        <td><input type="text" name="nome_cliente" value="{{ cliente.nome_cliente }}" required></td>
+                        <td><input type="text" name="endereco" value="{{ cliente.endereco or '' }}"></td>
+                        <td><input type="text" name="telefone" value="{{ cliente.telefone or '' }}"></td>
+                        <td class="actions">
+                            <button type="submit" class="edit-btn">Salvar</button>
+                    </form>
+                    <form action="{{ url_for('excluir_cliente_action', id_cliente=cliente.id) }}" method="POST" onsubmit="return confirm('Tem certeza que deseja excluir este cliente? Todos os seus agendamentos também serão removidos.');">
+                        <button type="submit" class="delete-btn">Excluir</button>
+                    </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>

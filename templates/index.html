@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Planejador de Coletas</title>
+    <style>
+        /* Estilos Gerais */
+        body { font-family: sans-serif; display: flex; padding: 20px; user-select: none; background-color: #f4f4f9; }
+        
+        /* Painel da Esquerda */
+        #left-panel { width: 280px; display: flex; flex-direction: column; height: 90vh; }
+        #lista-clientes-container { border: 1px solid #ccc; padding: 10px; background-color: white; flex-grow: 1; overflow-y: auto; }
+        .cliente-item { display: flex; align-items: center; padding: 8px; margin-bottom: 5px; border: 1px solid #ddd; background-color: #f9f9f9; cursor: grab; }
+        .status-icon { width: 12px; height: 12px; border-radius: 50%; margin-right: 10px; flex-shrink: 0; transition: background-color 0.3s; }
+        .status-icon.pendente { background-color: #e57373; }
+        .status-icon.agendado { background-color: #81c784; }
+        .action-button { padding: 12px; margin-top: 15px; font-size: 1.1em; font-weight: bold; color: white; border: none; border-radius: 5px; cursor: pointer; transition: background-color 0.2s; }
+        #copiar-btn { background-color: #2196F3; } #copiar-btn:hover { background-color: #1e88e5; }
+        #salvar-btn { background-color: #4CAF50; } #salvar-btn:hover { background-color: #45a049; }
+        #salvar-btn:disabled { background-color: #aaa; cursor: not-allowed; }
+
+        /* Painel da Direita (Calendário) */
+        #calendario-container { flex-grow: 1; margin-left: 20px; background-color: white; padding: 20px; border: 1px solid #ccc; }
+        .calendario-header { display: flex; justify-content: space-between; align-items: center; }
+        .nav-button { font-size: 2em; text-decoration: none; color: #333; padding: 0 15px; border-radius: 5px; }
+        .nav-button:hover { background-color: #f0f0f0; }
+        table.calendario { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { border: 1px solid #ccc; width: 14.28%; height: 140px; vertical-align: top; padding: 0; }
+        th { height: 40px; text-align: center; background-color: #f0f0f0; padding: 5px; }
+        .dia-numero { font-weight: bold; padding: 5px; }
+        .dia-invalido { background-color: #fafafa; }
+
+        /* Estilos para Divisão de Equipes */
+        .dia-content { display: flex; flex-direction: column; height: 100%; }
+        .equipe-container {
+            flex-grow: 1;
+            padding: 5px;
+            border-top: 1px dashed #ccc;
+            min-height: 50px;
+            transition: background-color 0.2s;
+        }
+        .equipe-container h4 { font-size: 0.7em; color: #777; margin: 0 0 5px 0; text-align: center; }
+        .equipe-container.drag-over { background-color: #e8f5e9; }
+
+        .cliente-alocado { font-size: 0.8em; padding: 3px; margin-top: 3px; border-radius: 3px; cursor: pointer; }
+        .cliente-alocado[data-equipe="R1"] { background-color: #e0f7fa; border: 1px solid #b2ebf2; }
+        .cliente-alocado[data-equipe="R2"] { background-color: #fff9c4; border: 1px solid #fff176; }
+        .cliente-alocado:hover { background-color: #ffcdd2; }
+
+        /* Estilo para o Contador de Equipe */
+        .contador-equipe {
+            font-weight: normal;
+            color: #555;
+            font-size: 0.9em;
+            margin-left: 4px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- PAINEL DA ESQUERDA -->
+    <div id="left-panel">
+        <div id="lista-clientes-container">
+            <div style="display: flex; justify-content: space-between; align-items: center; padding-right: 10px;">
+                <h3>Clientes</h3>
+                <a href="{{ gerenciar_clientes_url }}" title="Gerenciar Clientes" style="text-decoration: none; font-size: 1.2em;">&#9881;</a>
+            </div>
+            <div id="lista-clientes">
+                {% for cliente in clientes %}
+                    <div class="cliente-item" draggable="true" data-id="{{ cliente.id }}" data-nome="{{ cliente.nome_cliente }}">
+                        <span class="status-icon pendente"></span>
+                        <span>{{ cliente.nome_cliente }}</span>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+        <button id="copiar-btn" class="action-button">Copiar do Mês Anterior</button>
+        <button id="salvar-btn" class="action-button">Salvar Planejamento</button>
+    </div>
+
+    <!-- PAINEL DA DIREITA (CALENDÁRIO) -->
+    <div id="calendario-container">
+        <div class="calendario-header">
+            <a href="{{ url_for('calendario_view', ano=nav_anterior.ano, mes=nav_anterior.mes) }}" class="nav-button">&lt;</a>
+            <h2>{{ nome_mes }} de {{ ano }}</h2>
+            <a href="{{ url_for('calendario_view', ano=nav_proximo.ano, mes=nav_proximo.mes) }}" class="nav-button">&gt;</a>
+        </div>
+        <table class="calendario">
+            <thead><tr><th>Dom</th><th>Seg</th><th>Ter</th><th>Qua</th><th>Qui</th><th>Sex</th><th>Sáb</th></tr></thead>
+            <tbody>
+                {% for semana in calendario %}
+                <tr>
+                    {% for dia in semana %}
+                        {% if dia == 0 %}
+                            <td class="dia-invalido"></td>
+                        {% else %}
+                            <td class="dia-valido" data-dia="{{ dia }}">
+                                <div class="dia-content">
+                                    <div class="dia-numero">{{ dia }}</div>
+                                    <!-- Container para Equipe 1 com contador -->
+                                    <div class="equipe-container" data-equipe="R1">
+                                        <h4>R01 <span class="contador-equipe">(0)</span></h4>
+                                    </div>
+                                    <!-- Container para Equipe 2 com contador -->
+                                    <div class="equipe-container" data-equipe="R2">
+                                        <h4>R02 <span class="contador-equipe">(0)</span></h4>
+                                    </div>
+                                </div>
+                            </td>
+                        {% endif %}
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+<script>
+// =================================================================================
+// MÓDULO DO PLANEJADOR DE COLETAS
+// =================================================================================
+const Planejador = {
+    // --- 1. CONFIGURAÇÕES E ESTADO INICIAL ---
+    config: {
+        ano: parseInt('{{ ano }}', 10),
+        mes: parseInt('{{ mes }}', 10),
+        selectors: {
+            clienteItem: '.cliente-item',
+            statusIcon: '.status-icon',
+            clienteAlocado: '.cliente-alocado',
+            diaValido: '.dia-valido',
+            equipeContainer: '.equipe-container',
+            contadorEquipe: '.contador-equipe',
+            copiarBtn: '#copiar-btn',
+            salvarBtn: '#salvar-btn'
+        }
+    },
+    
+    elementos: {}, 
+
+    estado: {
+        planejamentoSalvo: JSON.parse('{{ planejamento_json | safe }}'),
+        todosClientes: {}
+    },
+
+    // --- 2. LÓGICA DA APLICAÇÃO (FUNÇÕES) ---
+    funcoes: {
+        atualizarStatusCliente(clienteId, agendado) {
+            const icone = document.querySelector(`${Planejador.config.selectors.clienteItem}[data-id='${clienteId}'] ${Planejador.config.selectors.statusIcon}`);
+            if (icone) {
+                icone.className = `status-icon ${agendado ? 'agendado' : 'pendente'}`;
+            }
+        },
+
+        atualizarContadorEquipe(dia, equipe) {
+            const containerEquipe = document.querySelector(`${Planejador.config.selectors.diaValido}[data-dia='${dia}'] ${Planejador.config.selectors.equipeContainer}[data-equipe='${equipe}']`);
+            if (!containerEquipe) return;
+
+            const contadorEl = containerEquipe.querySelector(Planejador.config.selectors.contadorEquipe);
+            const totalClientes = containerEquipe.querySelectorAll(Planejador.config.selectors.clienteAlocado).length;
+            
+            if (contadorEl) {
+                contadorEl.textContent = `(${totalClientes})`;
+            }
+        },
+
+        criarElementoClienteAlocado(dia, equipe, clienteId, clienteNome) {
+            const containerEquipe = document.querySelector(`${Planejador.config.selectors.diaValido}[data-dia='${dia}'] ${Planejador.config.selectors.equipeContainer}[data-equipe='${equipe}']`);
+            
+            if (!containerEquipe || containerEquipe.querySelector(`[data-cliente-id='${clienteId}']`)) return;
+
+            const el = document.createElement('div');
+            el.className = 'cliente-alocado';
+            el.textContent = clienteNome;
+            el.dataset.clienteId = clienteId;
+            el.dataset.equipe = equipe;
+            el.draggable = true;
+
+            el.addEventListener('click', () => {
+                const dia = el.closest(Planejador.config.selectors.diaValido).dataset.dia;
+                const equipe = el.dataset.equipe;
+
+                Planejador.funcoes.atualizarStatusCliente(clienteId, false);
+                el.remove();
+                Planejador.funcoes.atualizarContadorEquipe(dia, equipe);
+            });
+
+            el.addEventListener('dragstart', (e) => {
+                e.stopPropagation();
+                e.dataTransfer.setData('text/plain', JSON.stringify({ id: clienteId, nome: clienteNome }));
+                setTimeout(() => el.style.display = 'none', 0);
+            });
+            el.addEventListener('dragend', () => { el.style.display = 'block'; });
+            
+            containerEquipe.appendChild(el);
+            Planejador.funcoes.atualizarStatusCliente(clienteId, true);
+            Planejador.funcoes.atualizarContadorEquipe(dia, equipe);
+        },
+
+        carregarPlanejamentoInicial() {
+            const planejamento = Planejador.estado.planejamentoSalvo;
+            for (const dia in planejamento) {
+                planejamento[dia].forEach(item => {
+                    const nomeCliente = Planejador.estado.todosClientes[item.id_cliente];
+                    if (nomeCliente && item.equipe) {
+                        Planejador.funcoes.criarElementoClienteAlocado(dia, item.equipe, item.id_cliente, nomeCliente);
+                    }
+                });
+            }
+        },
+
+        async copiarDoMesAnterior() {
+            if (!confirm('Isso substituirá o planejamento atual na tela. Deseja continuar?')) return;
+            
+            try {
+                const response = await fetch(`/api/copiar_mes_anterior/${Planejador.config.ano}/${Planejador.config.mes}`);
+                if (!response.ok) throw new Error(`Erro na resposta do servidor: ${response.statusText}`);
+                
+                const planejamentoAnterior = await response.json();
+
+                document.querySelectorAll(Planejador.config.selectors.clienteAlocado).forEach(el => el.remove());
+                document.querySelectorAll(Planejador.config.selectors.statusIcon).forEach(icon => icon.classList.replace('agendado', 'pendente'));
+                document.querySelectorAll(Planejador.config.selectors.contadorEquipe).forEach(cont => cont.textContent = '(0)');
+                
+                planejamentoAnterior.forEach(item => {
+                    const nomeCliente = Planejador.estado.todosClientes[item.id_cliente];
+                    if (nomeCliente && item.equipe) {
+                        Planejador.funcoes.criarElementoClienteAlocado(item.dia, item.equipe, item.id_cliente, nomeCliente);
+                    }
+                });
+                alert(`${planejamentoAnterior.length} agendamentos copiados! Clique em "Salvar" para confirmar.`);
+            } catch (error) {
+                alert(`Erro ao copiar dados: ${error.message}`);
+            }
+        },
+
+        async salvarPlanejamentoAtual() {
+            const planejamentoParaSalvar = [];
+            document.querySelectorAll(Planejador.config.selectors.diaValido).forEach(diaEl => {
+                const dia = diaEl.dataset.dia;
+                diaEl.querySelectorAll(Planejador.config.selectors.clienteAlocado).forEach(clienteEl => {
+                    planejamentoParaSalvar.push({
+                        dia: parseInt(dia, 10),
+                        id_cliente: parseInt(clienteEl.dataset.clienteId, 10),
+                        equipe: clienteEl.dataset.equipe
+                    });
+                });
+            });
+
+            Planejador.elementos.salvarBtn.disabled = true;
+            Planejador.elementos.salvarBtn.textContent = 'Salvando...';
+
+            try {
+                const response = await fetch('/api/salvar_planejamento', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        ano: Planejador.config.ano,
+                        mes: Planejador.config.mes,
+                        planejamento: planejamentoParaSalvar
+                    })
+                });
+                const result = await response.json();
+                alert(response.ok ? `Sucesso: ${result.mensagem}` : `Erro: ${result.mensagem}`);
+            } catch (error) {
+                alert(`Erro de conexão ao salvar: ${error.message}`);
+            } finally {
+                Planejador.elementos.salvarBtn.disabled = false;
+                Planejador.elementos.salvarBtn.textContent = 'Salvar Planejamento';
+            }
+        }
+    },
+
+    // --- 3. INICIALIZAÇÃO E EVENT LISTENERS ---
+    init() {
+        this.elementos.copiarBtn = document.querySelector(this.config.selectors.copiarBtn);
+        this.elementos.salvarBtn = document.querySelector(this.config.selectors.salvarBtn);
+        
+        this.estado.todosClientes = Object.fromEntries(
+            [...document.querySelectorAll(this.config.selectors.clienteItem)].map(el => [el.dataset.id, el.dataset.nome])
+        );
+
+        this.funcoes.carregarPlanejamentoInicial();
+
+        document.querySelectorAll(this.config.selectors.clienteItem).forEach(c => {
+            c.addEventListener('dragstart', e => {
+                e.dataTransfer.setData('text/plain', JSON.stringify({ id: e.target.dataset.id, nome: e.target.dataset.nome }));
+            });
+        });
+        
+        document.querySelectorAll(this.config.selectors.equipeContainer).forEach(container => {
+            container.addEventListener('dragover', e => {
+                e.preventDefault();
+                container.classList.add('drag-over');
+            });
+            container.addEventListener('dragleave', () => container.classList.remove('drag-over'));
+            container.addEventListener('drop', e => {
+                e.preventDefault();
+                container.classList.remove('drag-over');
+                
+                const dados = JSON.parse(e.dataTransfer.getData('text/plain'));
+                const dia = container.closest(this.config.selectors.diaValido).dataset.dia;
+                const equipe = container.dataset.equipe;
+                
+                const elArrastado = document.querySelector(`${this.config.selectors.clienteAlocado}[data-cliente-id='${dados.id}'][style*='display: none']`);
+                if (elArrastado) {
+                    const diaOrigem = elArrastado.closest(this.config.selectors.diaValido).dataset.dia;
+                    const equipeOrigem = elArrastado.dataset.equipe;
+                    elArrastado.remove();
+                    this.funcoes.atualizarContadorEquipe(diaOrigem, equipeOrigem);
+                }
+
+                this.funcoes.criarElementoClienteAlocado(dia, equipe, dados.id, dados.nome);
+            });
+        });
+
+        this.elementos.copiarBtn.addEventListener('click', () => this.funcoes.copiarDoMesAnterior());
+        this.elementos.salvarBtn.addEventListener('click', () => this.funcoes.salvarPlanejamentoAtual());
+    }
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+    Planejador.init();
+});
+</script>
+
+</body>
+</html>
