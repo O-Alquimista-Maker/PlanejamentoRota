@@ -3,9 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Planejador de Coletas</title>
+    <title>Planejador de Coletas | by Fabio Sena</title>
     <style>
-        body { font-family: sans-serif; display: flex; padding: 20px; user-select: none; background-color: #f4f4f9; }
+        body { 
+            font-family: sans-serif; 
+            display: flex; 
+            padding: 20px; 
+            user-select: none; 
+            background-color: #f4f4f9; 
+            padding-bottom: 40px; /* Adiciona espaço para o rodapé não sobrepor o conteúdo */
+        }
+        
         #left-panel { width: 280px; display: flex; flex-direction: column; height: 90vh; }
         #lista-clientes-container { border: 1px solid #ccc; padding: 10px; background-color: white; flex-grow: 1; overflow-y: auto; }
         .cliente-item { display: flex; align-items: center; padding: 8px; margin-bottom: 5px; border: 1px solid #ddd; background-color: #f9f9f9; cursor: grab; }
@@ -16,22 +24,25 @@
         #copiar-btn { background-color: #2196F3; } #copiar-btn:hover { background-color: #1e88e5; }
         #salvar-btn { background-color: #4CAF50; } #salvar-btn:hover { background-color: #45a049; }
         #salvar-btn:disabled { background-color: #aaa; cursor: not-allowed; }
+
         #calendario-container { flex-grow: 1; margin-left: 20px; background-color: white; padding: 20px; border: 1px solid #ccc; }
         .calendario-header { display: flex; justify-content: space-between; align-items: center; }
         .nav-button { font-size: 2em; text-decoration: none; color: #333; padding: 0 15px; border-radius: 5px; }
         .nav-button:hover { background-color: #f0f0f0; }
         .export-btn { font-size: 1.5em; text-decoration: none; color: #007bff; padding: 0 15px; border-radius: 5px; display: flex; align-items: center; justify-content: center; }
         .export-btn:hover { background-color: #f0f0f0; }
+        
         table.calendario { width: 100%; border-collapse: collapse; margin-top: 15px; }
         th, td { border: 1px solid #ccc; width: 14.28%; height: 140px; vertical-align: top; padding: 0; }
         th { height: 40px; text-align: center; background-color: #f0f0f0; padding: 5px; }
         .dia-numero { font-weight: bold; padding: 5px; }
         .dia-invalido { background-color: #fafafa; }
+
         .dia-content { display: flex; flex-direction: column; height: 100%; }
         .equipe-container { flex-grow: 1; padding: 5px; border-top: 1px dashed #ccc; min-height: 50px; transition: background-color 0.2s; }
         .equipe-container h4 { font-size: 0.7em; color: #777; margin: 0 0 5px 0; text-align: center; }
         .equipe-container.drag-over { background-color: #e8f5e9; }
-        .contador-equipe { font-weight: normal; color: #555; font-size: 0.9em; margin-left: 4px; }
+
         .cliente-alocado { display: flex; justify-content: space-between; align-items: center; font-size: 0.8em; padding: 3px; margin-top: 3px; border-radius: 3px; cursor: pointer; }
         .cliente-alocado .cliente-nome { flex-grow: 1; }
         .cliente-alocado .lab-externo-check { margin-left: 5px; cursor: pointer; }
@@ -39,6 +50,23 @@
         .cliente-alocado[data-equipe="R1"] { background-color: #e0f7fa; border: 1px solid #b2ebf2; }
         .cliente-alocado[data-equipe="R2"] { background-color: #fff9c4; border: 1px solid #fff176; }
         .cliente-alocado:hover { background-color: #ffcdd2; }
+
+        .contador-equipe { font-weight: normal; color: #555; font-size: 0.9em; margin-left: 4px; }
+
+        .footer {
+            position: fixed;
+            left: 0;
+            bottom: 0;
+            width: 100%;
+            background-color: #f1f1f1;
+            color: #555;
+            text-align: center;
+            padding: 5px 0;
+            font-size: 0.75em; /* Fonte um pouco menor */
+            font-style: italic; /* Texto em itálico */
+            border-top: 1px solid #ddd;
+            z-index: 100;
+        }
     </style>
 </head>
 <body>
@@ -95,9 +123,6 @@
         </table>
     </div>
 
-<!-- ================================================================================= -->
-<!-- BLOCO SCRIPT CORRIGIDO E COMPLETO -->
-<!-- ================================================================================= -->
 <script>
 const Planejador = {
     config: {
@@ -324,6 +349,10 @@ document.addEventListener('DOMContentLoaded', () => {
     Planejador.init();
 });
 </script>
+
+    <div class="footer">
+        Desenvolvido por <strong>Fabio Sena</strong>
+    </div>
 
 </body>
 </html>

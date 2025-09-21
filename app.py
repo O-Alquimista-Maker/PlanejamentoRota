@@ -8,31 +8,48 @@ import io
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 from openpyxl.utils import get_column_letter
+import sys
+import os
+import shutil
 
-# Definir o locale para português do Brasil para nomes de meses
+# --- LÓGICA DE CAMINHOS PARA PYINSTALLER E BANCO DE DADOS ---
+def get_base_path():
+    if getattr(sys, 'frozen', False):
+        return os.path.dirname(sys.executable)
+    else:
+        return os.path.abspath(".")
+
+BASE_PATH = get_base_path()
+DB_NAME = 'database.db'
+DB_PATH = os.path.join(BASE_PATH, DB_NAME)
+
+if getattr(sys, 'frozen', False):
+    template_folder = os.path.join(sys._MEIPASS, 'templates')
+    db_template_path = os.path.join(sys._MEIPASS, DB_NAME)
+    if not os.path.exists(DB_PATH):
+        print(f"Banco de dados não encontrado em {DB_PATH}. Copiando modelo inicial...")
+        shutil.copyfile(db_template_path, DB_PATH)
+        print(f"Banco de dados inicial copiado para {DB_PATH}")
+    app = Flask(__name__, template_folder=template_folder)
+else:
+    app = Flask(__name__)
+
+database_manager.NOME_BANCO_DADOS = DB_PATH
+
 try:
     locale.setlocale(locale.LC_ALL, 'pt_BR.UTF-8')
 except locale.Error:
     print("Locale pt_BR.UTF-8 não encontrado. Usando o locale padrão do sistema.")
 
-# Inicializa a aplicação Flask
-app = Flask(__name__)
-
 # --- ROTAS PRINCIPAIS (CALENDÁRIO) ---
 
 @app.route('/')
 def index_redirect():
-    """
-    Rota raiz. Redireciona o usuário para o calendário do mês e ano atuais.
-    """
     hoje = datetime.today()
     return redirect(url_for('calendario_view', ano=hoje.year, mes=hoje.month))
 
 @app.route('/<int:ano>/<int:mes>')
 def calendario_view(ano, mes):
-    """
-    Rota principal que exibe o calendário.
-    """
     if mes < 1:
         return redirect(url_for('calendario_view', ano=ano - 1, mes=12))
     if mes > 12:
@@ -94,12 +111,7 @@ def salvar_planejamento():
 
 @app.route('/exportar_excel/<int:ano>/<int:mes>')
 def exportar_excel(ano, mes):
-    """
-    Gera um arquivo Excel com altura de linha dinâmica, células coloridas para equipes,
-    indicador de Lab Externo e oculta linhas/colunas não utilizadas.
-    """
     try:
-        # 1. Buscar dados, incluindo o novo campo 'lab_externo'
         planejamento_mes = database_manager.buscar_planejamento_por_mes(ano, mes)
         clientes_db = {c['id']: c['nome_cliente'] for c in database_manager.buscar_todos_clientes()}
         
@@ -123,16 +135,16 @@ def exportar_excel(ano, mes):
         cal = calendar.monthcalendar(ano, mes)
         dias_semana = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"]
         
-        # 2. Criar workbook e definir estilos
         wb = Workbook()
         ws = wb.active
         nome_mes_pt = calendar.month_name[mes].capitalize()
         ws.title = f"{nome_mes_pt} {ano}"
         
-        # Estilos
         header_font = Font(bold=True, size=14, color="FFFFFF")
         header_fill = PatternFill(start_color="4F81BD", end_color="4F81BD", fill_type="solid")
         header_align = Alignment(horizontal='center', vertical='center')
+        # ... continuação do código anterior ...
+
         day_header_font = Font(bold=True, size=12)
         day_header_fill = PatternFill(start_color="DDEBF7", end_color="DDEBF7", fill_type="solid")
         cell_align = Alignment(horizontal='left', vertical='top', wrap_text=True)
@@ -140,9 +152,6 @@ def exportar_excel(ano, mes):
         r01_fill = PatternFill(start_color="E0F7FA", end_color="E0F7FA", fill_type="solid")
         r02_fill = PatternFill(start_color="FFF9C4", end_color="FFF9C4", fill_type="solid")
         
-        # 3. Preencher o Excel
-        
-        # Título e Cabeçalho
         ws.merge_cells('A1:G1')
         titulo_cell = ws['A1']
         titulo_cell.value = f"Planejamento de Coletas - {nome_mes_pt} {ano}"
@@ -158,7 +167,6 @@ def exportar_excel(ano, mes):
             cell.border = thin_border
             ws.column_dimensions[get_column_letter(col)].width = 25
 
-        # Lógica de preenchimento com altura dinâmica
         row_offset = 3
         for semana in cal:
             max_clientes_r1 = 1
@@ -176,50 +184,50 @@ def exportar_excel(ano, mes):
                 dia_cell = ws.cell(row=row_offset, column=col)
                 r01_cell = ws.cell(row=row_offset + 1, column=col)
                 r02_cell = ws.cell(row=row_offset + 2, column=col)
-
                 dia_cell.border = thin_border
                 r01_cell.border = thin_border
                 r02_cell.border = thin_border
-
                 if dia == 0:
                     ws.merge_cells(start_row=row_offset, start_column=col, end_row=row_offset + 2, end_column=col)
                     dia_cell.fill = PatternFill(start_color="F0F0F0", end_color="F0F0F0", fill_type="solid")
                 else:
                     dia_cell.value = dia
                     dia_cell.font = Font(bold=True)
-
                     clientes_r1 = dados_calendario.get((dia, 'R1'), [])
                     r01_cell.value = "R01:\n" + "\n".join(f"- {c}" for c in clientes_r1)
                     r01_cell.alignment = cell_align
-
                     clientes_r2 = dados_calendario.get((dia, 'R2'), [])
                     r02_cell.value = "R02:\n" + "\n".join(f"- {c}" for c in clientes_r2)
                     r02_cell.alignment = cell_align
-                    
                     if col != 1 and col != 7:
                         r01_cell.fill = r01_fill
                         r02_cell.fill = r02_fill
-            
             row_offset += 3
 
-        # Adicionar legenda se necessário
         if legenda_necessaria:
-            linha_legenda = row_offset + 1
+            linha_legenda = row_offset
             ws.row_dimensions[linha_legenda].height = 20
             ws.merge_cells(start_row=linha_legenda, start_column=1, end_row=linha_legenda, end_column=7)
             legenda_cell = ws.cell(row=linha_legenda, column=1)
             legenda_cell.value = "★ = Acompanhamento Laboratório Externo"
             legenda_cell.font = Font(bold=True, color="d32f2f")
             legenda_cell.alignment = Alignment(horizontal='left', vertical='center')
-            row_offset += 2 # Adiciona espaço após a legenda
+            row_offset += 1
 
-        # Ocultar colunas e linhas não utilizadas
+        linha_rodape = row_offset
+        ws.row_dimensions[linha_rodape].height = 20
+        ws.merge_cells(start_row=linha_rodape, start_column=1, end_row=linha_rodape, end_column=7)
+        rodape_cell = ws.cell(row=linha_rodape, column=1)
+        rodape_cell.value = f"Relatório gerado pelo Planejador de Rotas - Desenvolvido por Fabio Sena ({datetime.now().strftime('%d/%m/%Y %H:%M')})"
+        rodape_cell.font = Font(italic=True, size=8, color="808080") # Fonte menor e itálico
+        rodape_cell.alignment = Alignment(horizontal='right', vertical='center')
+        row_offset += 1
+
         for i in range(8, 703):
             ws.column_dimensions[get_column_letter(i)].hidden = True
         for i in range(row_offset, row_offset + 100):
             ws.row_dimensions[i].hidden = True
 
-        # 4. Salvar em buffer e enviar
         buffer = io.BytesIO()
         wb.save(buffer)
         buffer.seek(0)
@@ -242,10 +250,8 @@ def adicionar_cliente_action():
     nome = request.form.get('nome_cliente')
     endereco = request.form.get('endereco')
     telefone = request.form.get('telefone')
-    
     if nome:
         database_manager.adicionar_cliente(nome, endereco, telefone)
-        
     return redirect(url_for('gerenciar_clientes_view'))
 
 @app.route('/clientes/editar/<int:id_cliente>', methods=['POST'])
@@ -253,10 +259,8 @@ def editar_cliente_action(id_cliente):
     nome = request.form.get('nome_cliente')
     endereco = request.form.get('endereco')
     telefone = request.form.get('telefone')
-
     if nome:
         database_manager.editar_cliente(id_cliente, nome, endereco, telefone)
-        
     return redirect(url_for('gerenciar_clientes_view'))
 
 @app.route('/clientes/excluir/<int:id_cliente>', methods=['POST'])
@@ -267,7 +271,6 @@ def excluir_cliente_action(id_cliente):
 # --- PONTO DE ENTRADA DA APLICAÇÃO ---
 
 if __name__ == '__main__':
-    # Esta chamada agora funciona porque movemos a função para o lugar certo.
     database_manager.inicializar() 
     app.run(debug=True)
 

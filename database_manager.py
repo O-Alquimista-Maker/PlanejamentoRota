@@ -1,18 +1,16 @@
 import sqlite3
-import calendar
+import os
 
-NOME_BANCO_DADOS = 'database.db'
+# Esta variável será atualizada pelo app.py para apontar para o caminho correto.
+NOME_BANCO_DADOS = 'database.db' 
 
-# =================================================================
-# NOVA FUNÇÃO ADICIONADA A ESTE ARQUIVO
-# =================================================================
 def inicializar():
     """Garante que todas as tabelas necessárias existam no banco de dados."""
     try:
+        # Usa a variável global que pode ter sido ajustada pelo app.py
         conexao = sqlite3.connect(NOME_BANCO_DADOS)
         cursor = conexao.cursor()
 
-        # Cria a tabela de planejamento se ela não existir
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS planejamento (
                 ano INTEGER NOT NULL,
@@ -26,7 +24,6 @@ def inicializar():
             )
         ''')
         
-        # Cria a tabela de clientes se ela não existir
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS clientes (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -42,7 +39,6 @@ def inicializar():
 
     except Exception as e:
         print(f"Ocorreu um erro ao inicializar o banco de dados: {e}")
-# =================================================================
 
 def get_db_connection():
     """Cria e retorna uma conexão com o banco de dados configurada para retornar dicionários."""
@@ -101,10 +97,11 @@ def buscar_planejamento_por_mes(ano, mes):
     return [dict(row) for row in planejamento]
 
 def salvar_planejamento_mes(ano, mes, planejamento_do_mes):
-    """Salva o planejamento, incluindo o status de lab_externo."""
+    """Salva o planejamento de um mês, substituindo completamente os dados existentes para aquele mês."""
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
+        # Apaga todos os registros do mês antes de inserir os novos, prevenindo erros de chave única.
         cursor.execute('DELETE FROM planejamento WHERE ano = ? AND mes = ?', (ano, mes))
         
         if planejamento_do_mes:
@@ -118,10 +115,11 @@ def salvar_planejamento_mes(ano, mes, planejamento_do_mes):
             )
         
         conn.commit()
-        return len(planejamento_do_mes)
+        return len(planejamento_do_mes) if planejamento_do_mes else 0
     except Exception as e:
         conn.rollback()
         print(f"Erro ao salvar planejamento: {e}")
         raise e
     finally:
         conn.close()
+
