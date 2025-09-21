@@ -5,10 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Planejador de Coletas</title>
     <style>
-        /* Estilos Gerais */
         body { font-family: sans-serif; display: flex; padding: 20px; user-select: none; background-color: #f4f4f9; }
-        
-        /* Painel da Esquerda */
         #left-panel { width: 280px; display: flex; flex-direction: column; height: 90vh; }
         #lista-clientes-container { border: 1px solid #ccc; padding: 10px; background-color: white; flex-grow: 1; overflow-y: auto; }
         .cliente-item { display: flex; align-items: center; padding: 8px; margin-bottom: 5px; border: 1px solid #ddd; background-color: #f9f9f9; cursor: grab; }
@@ -19,42 +16,29 @@
         #copiar-btn { background-color: #2196F3; } #copiar-btn:hover { background-color: #1e88e5; }
         #salvar-btn { background-color: #4CAF50; } #salvar-btn:hover { background-color: #45a049; }
         #salvar-btn:disabled { background-color: #aaa; cursor: not-allowed; }
-
-        /* Painel da Direita (Calendário) */
         #calendario-container { flex-grow: 1; margin-left: 20px; background-color: white; padding: 20px; border: 1px solid #ccc; }
         .calendario-header { display: flex; justify-content: space-between; align-items: center; }
         .nav-button { font-size: 2em; text-decoration: none; color: #333; padding: 0 15px; border-radius: 5px; }
         .nav-button:hover { background-color: #f0f0f0; }
+        .export-btn { font-size: 1.5em; text-decoration: none; color: #007bff; padding: 0 15px; border-radius: 5px; display: flex; align-items: center; justify-content: center; }
+        .export-btn:hover { background-color: #f0f0f0; }
         table.calendario { width: 100%; border-collapse: collapse; margin-top: 15px; }
         th, td { border: 1px solid #ccc; width: 14.28%; height: 140px; vertical-align: top; padding: 0; }
         th { height: 40px; text-align: center; background-color: #f0f0f0; padding: 5px; }
         .dia-numero { font-weight: bold; padding: 5px; }
         .dia-invalido { background-color: #fafafa; }
-
-        /* Estilos para Divisão de Equipes */
         .dia-content { display: flex; flex-direction: column; height: 100%; }
-        .equipe-container {
-            flex-grow: 1;
-            padding: 5px;
-            border-top: 1px dashed #ccc;
-            min-height: 50px;
-            transition: background-color 0.2s;
-        }
+        .equipe-container { flex-grow: 1; padding: 5px; border-top: 1px dashed #ccc; min-height: 50px; transition: background-color 0.2s; }
         .equipe-container h4 { font-size: 0.7em; color: #777; margin: 0 0 5px 0; text-align: center; }
         .equipe-container.drag-over { background-color: #e8f5e9; }
-
-        .cliente-alocado { font-size: 0.8em; padding: 3px; margin-top: 3px; border-radius: 3px; cursor: pointer; }
+        .contador-equipe { font-weight: normal; color: #555; font-size: 0.9em; margin-left: 4px; }
+        .cliente-alocado { display: flex; justify-content: space-between; align-items: center; font-size: 0.8em; padding: 3px; margin-top: 3px; border-radius: 3px; cursor: pointer; }
+        .cliente-alocado .cliente-nome { flex-grow: 1; }
+        .cliente-alocado .lab-externo-check { margin-left: 5px; cursor: pointer; }
+        .cliente-alocado .lab-externo-indicator { font-weight: bold; color: #d32f2f; margin-right: 4px; }
         .cliente-alocado[data-equipe="R1"] { background-color: #e0f7fa; border: 1px solid #b2ebf2; }
         .cliente-alocado[data-equipe="R2"] { background-color: #fff9c4; border: 1px solid #fff176; }
         .cliente-alocado:hover { background-color: #ffcdd2; }
-
-        /* Estilo para o Contador de Equipe */
-        .contador-equipe {
-            font-weight: normal;
-            color: #555;
-            font-size: 0.9em;
-            margin-left: 4px;
-        }
     </style>
 </head>
 <body>
@@ -84,6 +68,7 @@
         <div class="calendario-header">
             <a href="{{ url_for('calendario_view', ano=nav_anterior.ano, mes=nav_anterior.mes) }}" class="nav-button">&lt;</a>
             <h2>{{ nome_mes }} de {{ ano }}</h2>
+            <a href="{{ url_for('exportar_excel', ano=ano, mes=mes) }}" class="export-btn" title="Exportar para Excel">&#x1F4E5;</a>
             <a href="{{ url_for('calendario_view', ano=nav_proximo.ano, mes=nav_proximo.mes) }}" class="nav-button">&gt;</a>
         </div>
         <table class="calendario">
@@ -98,14 +83,8 @@
                             <td class="dia-valido" data-dia="{{ dia }}">
                                 <div class="dia-content">
                                     <div class="dia-numero">{{ dia }}</div>
-                                    <!-- Container para Equipe 1 com contador -->
-                                    <div class="equipe-container" data-equipe="R1">
-                                        <h4>R01 <span class="contador-equipe">(0)</span></h4>
-                                    </div>
-                                    <!-- Container para Equipe 2 com contador -->
-                                    <div class="equipe-container" data-equipe="R2">
-                                        <h4>R02 <span class="contador-equipe">(0)</span></h4>
-                                    </div>
+                                    <div class="equipe-container" data-equipe="R1"><h4>R01 <span class="contador-equipe">(0)</span></h4></div>
+                                    <div class="equipe-container" data-equipe="R2"><h4>R02 <span class="contador-equipe">(0)</span></h4></div>
                                 </div>
                             </td>
                         {% endif %}
@@ -116,12 +95,11 @@
         </table>
     </div>
 
+<!-- ================================================================================= -->
+<!-- BLOCO SCRIPT CORRIGIDO E COMPLETO -->
+<!-- ================================================================================= -->
 <script>
-// =================================================================================
-// MÓDULO DO PLANEJADOR DE COLETAS
-// =================================================================================
 const Planejador = {
-    // --- 1. CONFIGURAÇÕES E ESTADO INICIAL ---
     config: {
         ano: parseInt('{{ ano }}', 10),
         mes: parseInt('{{ mes }}', 10),
@@ -144,7 +122,6 @@ const Planejador = {
         todosClientes: {}
     },
 
-    // --- 2. LÓGICA DA APLICAÇÃO (FUNÇÕES) ---
     funcoes: {
         atualizarStatusCliente(clienteId, agendado) {
             const icone = document.querySelector(`${Planejador.config.selectors.clienteItem}[data-id='${clienteId}'] ${Planejador.config.selectors.statusIcon}`);
@@ -154,7 +131,7 @@ const Planejador = {
         },
 
         atualizarContadorEquipe(dia, equipe) {
-            const containerEquipe = document.querySelector(`${Planejador.config.selectors.diaValido}[data-dia='${dia}'] ${Planejador.config.selectors.equipeContainer}[data-equipe='${equipe}']`);
+            const containerEquipe = document.querySelector(`.dia-valido[data-dia='${dia}'] .equipe-container[data-equipe='${equipe}']`);
             if (!containerEquipe) return;
 
             const contadorEl = containerEquipe.querySelector(Planejador.config.selectors.contadorEquipe);
@@ -165,22 +142,48 @@ const Planejador = {
             }
         },
 
-        criarElementoClienteAlocado(dia, equipe, clienteId, clienteNome) {
-            const containerEquipe = document.querySelector(`${Planejador.config.selectors.diaValido}[data-dia='${dia}'] ${Planejador.config.selectors.equipeContainer}[data-equipe='${equipe}']`);
-            
+        criarElementoClienteAlocado(dia, equipe, clienteId, clienteNome, labExterno = false) {
+            const containerEquipe = document.querySelector(`.dia-valido[data-dia='${dia}'] .equipe-container[data-equipe='${equipe}']`);
             if (!containerEquipe || containerEquipe.querySelector(`[data-cliente-id='${clienteId}']`)) return;
 
             const el = document.createElement('div');
             el.className = 'cliente-alocado';
-            el.textContent = clienteNome;
             el.dataset.clienteId = clienteId;
             el.dataset.equipe = equipe;
             el.draggable = true;
 
-            el.addEventListener('click', () => {
-                const dia = el.closest(Planejador.config.selectors.diaValido).dataset.dia;
-                const equipe = el.dataset.equipe;
+            el.innerHTML = `
+                <span class="cliente-nome">${clienteNome}</span>
+                <input type="checkbox" class="lab-externo-check" title="Acompanhamento Lab. Externo">
+            `;
 
+            const checkbox = el.querySelector('.lab-externo-check');
+            checkbox.checked = labExterno;
+            
+            if (labExterno) {
+                const indicator = document.createElement('span');
+                indicator.className = 'lab-externo-indicator';
+                indicator.textContent = '★';
+                el.prepend(indicator);
+            }
+
+            checkbox.addEventListener('change', (e) => {
+                const indicator = el.querySelector('.lab-externo-indicator');
+                if (e.target.checked) {
+                    if (!indicator) {
+                        const newIndicator = document.createElement('span');
+                        newIndicator.className = 'lab-externo-indicator';
+                        newIndicator.textContent = '★';
+                        el.prepend(newIndicator);
+                    }
+                } else {
+                    if (indicator) indicator.remove();
+                }
+            });
+
+            el.querySelector('.cliente-nome').addEventListener('click', () => {
+                const dia = el.closest('.dia-valido').dataset.dia;
+                const equipe = el.dataset.equipe;
                 Planejador.funcoes.atualizarStatusCliente(clienteId, false);
                 el.remove();
                 Planejador.funcoes.atualizarContadorEquipe(dia, equipe);
@@ -204,7 +207,7 @@ const Planejador = {
                 planejamento[dia].forEach(item => {
                     const nomeCliente = Planejador.estado.todosClientes[item.id_cliente];
                     if (nomeCliente && item.equipe) {
-                        Planejador.funcoes.criarElementoClienteAlocado(dia, item.equipe, item.id_cliente, nomeCliente);
+                        Planejador.funcoes.criarElementoClienteAlocado(dia, item.equipe, item.id_cliente, nomeCliente, item.lab_externo);
                     }
                 });
             }
@@ -219,14 +222,14 @@ const Planejador = {
                 
                 const planejamentoAnterior = await response.json();
 
-                document.querySelectorAll(Planejador.config.selectors.clienteAlocado).forEach(el => el.remove());
-                document.querySelectorAll(Planejador.config.selectors.statusIcon).forEach(icon => icon.classList.replace('agendado', 'pendente'));
-                document.querySelectorAll(Planejador.config.selectors.contadorEquipe).forEach(cont => cont.textContent = '(0)');
+                document.querySelectorAll('.cliente-alocado').forEach(el => el.remove());
+                document.querySelectorAll('.status-icon').forEach(icon => icon.classList.replace('agendado', 'pendente'));
+                document.querySelectorAll('.contador-equipe').forEach(cont => cont.textContent = '(0)');
                 
                 planejamentoAnterior.forEach(item => {
                     const nomeCliente = Planejador.estado.todosClientes[item.id_cliente];
                     if (nomeCliente && item.equipe) {
-                        Planejador.funcoes.criarElementoClienteAlocado(item.dia, item.equipe, item.id_cliente, nomeCliente);
+                        Planejador.funcoes.criarElementoClienteAlocado(item.dia, item.equipe, item.id_cliente, nomeCliente, item.lab_externo);
                     }
                 });
                 alert(`${planejamentoAnterior.length} agendamentos copiados! Clique em "Salvar" para confirmar.`);
@@ -237,14 +240,12 @@ const Planejador = {
 
         async salvarPlanejamentoAtual() {
             const planejamentoParaSalvar = [];
-            document.querySelectorAll(Planejador.config.selectors.diaValido).forEach(diaEl => {
-                const dia = diaEl.dataset.dia;
-                diaEl.querySelectorAll(Planejador.config.selectors.clienteAlocado).forEach(clienteEl => {
-                    planejamentoParaSalvar.push({
-                        dia: parseInt(dia, 10),
-                        id_cliente: parseInt(clienteEl.dataset.clienteId, 10),
-                        equipe: clienteEl.dataset.equipe
-                    });
+            document.querySelectorAll('.dia-valido .cliente-alocado').forEach(clienteEl => {
+                planejamentoParaSalvar.push({
+                    dia: parseInt(clienteEl.closest('.dia-valido').dataset.dia, 10),
+                    id_cliente: parseInt(clienteEl.dataset.clienteId, 10),
+                    equipe: clienteEl.dataset.equipe,
+                    lab_externo: clienteEl.querySelector('.lab-externo-check').checked
                 });
             });
 
@@ -272,7 +273,6 @@ const Planejador = {
         }
     },
 
-    // --- 3. INICIALIZAÇÃO E EVENT LISTENERS ---
     init() {
         this.elementos.copiarBtn = document.querySelector(this.config.selectors.copiarBtn);
         this.elementos.salvarBtn = document.querySelector(this.config.selectors.salvarBtn);
@@ -303,7 +303,7 @@ const Planejador = {
                 const dia = container.closest(this.config.selectors.diaValido).dataset.dia;
                 const equipe = container.dataset.equipe;
                 
-                const elArrastado = document.querySelector(`${this.config.selectors.clienteAlocado}[data-cliente-id='${dados.id}'][style*='display: none']`);
+                const elArrastado = document.querySelector(`.cliente-alocado[data-cliente-id='${dados.id}'][style*='display: none']`);
                 if (elArrastado) {
                     const diaOrigem = elArrastado.closest(this.config.selectors.diaValido).dataset.dia;
                     const equipeOrigem = elArrastado.dataset.equipe;
