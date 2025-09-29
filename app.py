@@ -32,10 +32,12 @@ IS_FROZEN = getattr(sys, 'frozen', False) # Variável para saber se estamos no .
 if IS_FROZEN:
     # Se estiver rodando como um executável
     template_folder = os.path.join(sys._MEIPASS, 'templates')
+    # Adiciona o caminho para a pasta static
+    static_folder = os.path.join(sys._MEIPASS, 'static')
     db_template_path = os.path.join(sys._MEIPASS, DB_NAME)
     if not os.path.exists(DB_PATH):
         shutil.copyfile(db_template_path, DB_PATH)
-    app = Flask(__name__, template_folder=template_folder)
+    app = Flask(__name__, template_folder=template_folder, static_folder=static_folder)
 else:
     # Se estiver rodando como um script normal
     app = Flask(__name__)
@@ -47,7 +49,10 @@ database_manager.NOME_BANCO_DADOS = DB_PATH
 try:
     locale.setlocale(locale.LC_ALL, 'pt_BR.UTF-8')
 except locale.Error:
-    print("Locale pt_BR.UTF-8 não encontrado.")
+    try:
+        locale.setlocale(locale.LC_ALL, 'Portuguese_Brazil.1252')
+    except locale.Error:
+        print("Locale pt_BR não encontrado. Nomes de meses podem aparecer em inglês.")
 
 # --- ROTAS PRINCIPAIS (CALENDÁRIO) ---
 

@@ -4,355 +4,87 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Planejador de Coletas | by Fabio Sena</title>
-    <style>
-        body { 
-            font-family: sans-serif; 
-            display: flex; 
-            padding: 20px; 
-            user-select: none; 
-            background-color: #f4f4f9; 
-            padding-bottom: 40px; /* Adiciona espaço para o rodapé não sobrepor o conteúdo */
-        }
-        
-        #left-panel { width: 280px; display: flex; flex-direction: column; height: 90vh; }
-        #lista-clientes-container { border: 1px solid #ccc; padding: 10px; background-color: white; flex-grow: 1; overflow-y: auto; }
-        .cliente-item { display: flex; align-items: center; padding: 8px; margin-bottom: 5px; border: 1px solid #ddd; background-color: #f9f9f9; cursor: grab; }
-        .status-icon { width: 12px; height: 12px; border-radius: 50%; margin-right: 10px; flex-shrink: 0; transition: background-color 0.3s; }
-        .status-icon.pendente { background-color: #e57373; }
-        .status-icon.agendado { background-color: #81c784; }
-        .action-button { padding: 12px; margin-top: 15px; font-size: 1.1em; font-weight: bold; color: white; border: none; border-radius: 5px; cursor: pointer; transition: background-color 0.2s; }
-        #copiar-btn { background-color: #2196F3; } #copiar-btn:hover { background-color: #1e88e5; }
-        #salvar-btn { background-color: #4CAF50; } #salvar-btn:hover { background-color: #45a049; }
-        #salvar-btn:disabled { background-color: #aaa; cursor: not-allowed; }
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-        #calendario-container { flex-grow: 1; margin-left: 20px; background-color: white; padding: 20px; border: 1px solid #ccc; }
-        .calendario-header { display: flex; justify-content: space-between; align-items: center; }
-        .nav-button { font-size: 2em; text-decoration: none; color: #333; padding: 0 15px; border-radius: 5px; }
-        .nav-button:hover { background-color: #f0f0f0; }
-        .export-btn { font-size: 1.5em; text-decoration: none; color: #007bff; padding: 0 15px; border-radius: 5px; display: flex; align-items: center; justify-content: center; }
-        .export-btn:hover { background-color: #f0f0f0; }
-        
-        table.calendario { width: 100%; border-collapse: collapse; margin-top: 15px; }
-        th, td { border: 1px solid #ccc; width: 14.28%; height: 140px; vertical-align: top; padding: 0; }
-        th { height: 40px; text-align: center; background-color: #f0f0f0; padding: 5px; }
-        .dia-numero { font-weight: bold; padding: 5px; }
-        .dia-invalido { background-color: #fafafa; }
-
-        .dia-content { display: flex; flex-direction: column; height: 100%; }
-        .equipe-container { flex-grow: 1; padding: 5px; border-top: 1px dashed #ccc; min-height: 50px; transition: background-color 0.2s; }
-        .equipe-container h4 { font-size: 0.7em; color: #777; margin: 0 0 5px 0; text-align: center; }
-        .equipe-container.drag-over { background-color: #e8f5e9; }
-
-        .cliente-alocado { display: flex; justify-content: space-between; align-items: center; font-size: 0.8em; padding: 3px; margin-top: 3px; border-radius: 3px; cursor: pointer; }
-        .cliente-alocado .cliente-nome { flex-grow: 1; }
-        .cliente-alocado .lab-externo-check { margin-left: 5px; cursor: pointer; }
-        .cliente-alocado .lab-externo-indicator { font-weight: bold; color: #d32f2f; margin-right: 4px; }
-        .cliente-alocado[data-equipe="R1"] { background-color: #e0f7fa; border: 1px solid #b2ebf2; }
-        .cliente-alocado[data-equipe="R2"] { background-color: #fff9c4; border: 1px solid #fff176; }
-        .cliente-alocado:hover { background-color: #ffcdd2; }
-
-        .contador-equipe { font-weight: normal; color: #555; font-size: 0.9em; margin-left: 4px; }
-
-        .footer {
-            position: fixed;
-            left: 0;
-            bottom: 0;
-            width: 100%;
-            background-color: #f1f1f1;
-            color: #555;
-            text-align: center;
-            padding: 5px 0;
-            font-size: 0.75em;
-            font-style: italic;
-            border-top: 1px solid #ddd;
-            z-index: 100;
-        }
-    </style>
+    <!-- Stylesheet -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css' ) }}">
 </head>
 <body>
 
-    <!-- PAINEL DA ESQUERDA -->
-    <div id="left-panel">
-        <div id="lista-clientes-container">
-            <div style="display: flex; justify-content: space-between; align-items: center; padding-right: 10px;">
-                <h3>Clientes</h3>
-                <a href="{{ gerenciar_clientes_url }}" title="Gerenciar Clientes" style="text-decoration: none; font-size: 1.2em;">&#9881;</a>
-            </div>
-            <div id="lista-clientes">
-                {% for cliente in clientes %}
-                    <div class="cliente-item" draggable="true" data-id="{{ cliente.id }}" data-nome="{{ cliente.nome_cliente }}">
-                        <span class="status-icon pendente"></span>
-                        <span>{{ cliente.nome_cliente }}</span>
-                    </div>
-                {% endfor %}
-            </div>
-        </div>
-        <button id="copiar-btn" class="action-button">Copiar do Mês Anterior</button>
-        <button id="salvar-btn" class="action-button">Salvar Planejamento</button>
-    </div>
-
-    <!-- PAINEL DA DIREITA (CALENDÁRIO) -->
-    <div id="calendario-container">
-        <div class="calendario-header">
-            <a href="{{ url_for('calendario_view', ano=nav_anterior.ano, mes=nav_anterior.mes) }}" class="nav-button">&lt;</a>
-            <h2>{{ nome_mes }} de {{ ano }}</h2>
-            <a href="{{ url_for('exportar_excel', ano=ano, mes=mes) }}" class="export-btn" title="Exportar para Excel">&#x1F4E5;</a>
-            <a href="{{ url_for('calendario_view', ano=nav_proximo.ano, mes=nav_proximo.mes) }}" class="nav-button">&gt;</a>
-        </div>
-        <table class="calendario">
-            <thead><tr><th>Dom</th><th>Seg</th><th>Ter</th><th>Qua</th><th>Qui</th><th>Sex</th><th>Sáb</th></tr></thead>
-            <tbody>
-                {% for semana in calendario %}
-                <tr>
-                    {% for dia in semana %}
-                        {% if dia == 0 %}
-                            <td class="dia-invalido"></td>
-                        {% else %}
-                            <td class="dia-valido" data-dia="{{ dia }}">
-                                <div class="dia-content">
-                                    <div class="dia-numero">{{ dia }}</div>
-                                    <div class="equipe-container" data-equipe="R1"><h4>R01 <span class="contador-equipe">(0)</span></h4></div>
-                                    <div class="equipe-container" data-equipe="R2"><h4>R02 <span class="contador-equipe">(0)</span></h4></div>
-                                </div>
-                            </td>
-                        {% endif %}
+    <div class="container-principal">
+        <!-- PAINEL DA ESQUERDA -->
+        <div id="left-panel">
+            <div id="lista-clientes-container">
+                <div style="display: flex; justify-content: space-between; align-items: center; padding-right: 10px; margin-bottom: 15px;">
+                    <h3>Clientes</h3>
+                    <a href="{{ gerenciar_clientes_url }}" title="Gerenciar Clientes" style="text-decoration: none; font-size: 1.5em;">&#9881;</a>
+                </div>
+                <div id="lista-clientes">
+                    {% for cliente in clientes %}
+                        <div class="cliente-item" draggable="true" data-id="{{ cliente.id }}" data-nome="{{ cliente.nome_cliente }}">
+                            <span class="status-icon pendente"></span>
+                            <span>{{ cliente.nome_cliente }}</span>
+                        </div>
                     {% endfor %}
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+                </div>
+            </div>
+            <button id="copiar-btn" class="action-button btn-primario">Copiar do Mês Anterior</button>
+            <button id="salvar-btn" class="action-button btn-sucesso">Salvar Planejamento</button>
+        </div>
+
+        <!-- PAINEL DA DIREITA (CALENDÁRIO) -->
+        <div id="calendario-container" class="painel">
+            <div class="painel-header">
+                <a href="{{ url_for('calendario_view', ano=nav_anterior.ano, mes=nav_anterior.mes) }}" class="nav-button">&lt;</a>
+                <h2>{{ nome_mes }} de {{ ano }}</h2>
+                <a href="{{ url_for('exportar_excel', ano=ano, mes=mes) }}" class="export-btn" title="Exportar para Excel">&#x1F4E5;</a>
+                <a href="{{ url_for('calendario_view', ano=nav_proximo.ano, mes=nav_proximo.mes) }}" class="nav-button">&gt;</a>
+            </div>
+            <table class="calendario">
+                <thead><tr><th>Dom</th><th>Seg</th><th>Ter</th><th>Qua</th><th>Qui</th><th>Sex</th><th>Sáb</th></tr></thead>
+                <tbody>
+                    {% for semana in calendario %}
+                    <tr>
+                        {% for dia in semana %}
+                            {% if dia == 0 %}
+                                <td class="dia-invalido"></td>
+                            {% else %}
+                                <td class="dia-valido" data-dia="{{ dia }}">
+                                    <div class="dia-content">
+                                        <div class="dia-numero">{{ dia }}</div>
+                                        <div class="equipe-container" data-equipe="R1"><h4>R01 <span class="contador-equipe">(0)</span></h4></div>
+                                        <div class="equipe-container" data-equipe="R2"><h4>R02 <span class="contador-equipe">(0)</span></h4></div>
+                                    </div>
+                                </td>
+                            {% endif %}
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
 
-<script>
-const Planejador = {
-    config: {
-        ano: parseInt('{{ ano }}', 10),
-        mes: parseInt('{{ mes }}', 10),
-        selectors: {
-            clienteItem: '.cliente-item',
-            statusIcon: '.status-icon',
-            clienteAlocado: '.cliente-alocado',
-            diaValido: '.dia-valido',
-            equipeContainer: '.equipe-container',
-            contadorEquipe: '.contador-equipe',
-            copiarBtn: '#copiar-btn',
-            salvarBtn: '#salvar-btn'
-        }
-    },
-    
-    elementos: {}, 
-
-    estado: {
-        planejamentoSalvo: JSON.parse('{{ planejamento_json | safe }}'),
-        todosClientes: {}
-    },
-
-    funcoes: {
-        atualizarStatusCliente(clienteId, agendado) {
-            const icone = document.querySelector(`${Planejador.config.selectors.clienteItem}[data-id='${clienteId}'] ${Planejador.config.selectors.statusIcon}`);
-            if (icone) {
-                icone.className = `status-icon ${agendado ? 'agendado' : 'pendente'}`;
-            }
-        },
-
-        atualizarContadorEquipe(dia, equipe) {
-            const containerEquipe = document.querySelector(`.dia-valido[data-dia='${dia}'] .equipe-container[data-equipe='${equipe}']`);
-            if (!containerEquipe) return;
-
-            const contadorEl = containerEquipe.querySelector(Planejador.config.selectors.contadorEquipe);
-            const totalClientes = containerEquipe.querySelectorAll(Planejador.config.selectors.clienteAlocado).length;
-            
-            if (contadorEl) {
-                contadorEl.textContent = `(${totalClientes})`;
-            }
-        },
-
-        criarElementoClienteAlocado(dia, equipe, clienteId, clienteNome, labExterno = false) {
-            const containerEquipe = document.querySelector(`.dia-valido[data-dia='${dia}'] .equipe-container[data-equipe='${equipe}']`);
-            if (!containerEquipe || containerEquipe.querySelector(`[data-cliente-id='${clienteId}']`)) return;
-
-            const el = document.createElement('div');
-            el.className = 'cliente-alocado';
-            el.dataset.clienteId = clienteId;
-            el.dataset.equipe = equipe;
-            el.draggable = true;
-
-            el.innerHTML = `
-                <span class="cliente-nome">${clienteNome}</span>
-                <input type="checkbox" class="lab-externo-check" title="Acompanhamento Lab. Externo">
-            `;
-
-            const checkbox = el.querySelector('.lab-externo-check');
-            checkbox.checked = labExterno;
-            
-            if (labExterno) {
-                const indicator = document.createElement('span');
-                indicator.className = 'lab-externo-indicator';
-                indicator.textContent = '★';
-                el.prepend(indicator);
-            }
-
-            checkbox.addEventListener('change', (e) => {
-                const indicator = el.querySelector('.lab-externo-indicator');
-                if (e.target.checked) {
-                    if (!indicator) {
-                        const newIndicator = document.createElement('span');
-                        newIndicator.className = 'lab-externo-indicator';
-                        newIndicator.textContent = '★';
-                        el.prepend(newIndicator);
-                    }
-                } else {
-                    if (indicator) indicator.remove();
-                }
-            });
-
-            el.querySelector('.cliente-nome').addEventListener('click', () => {
-                const dia = el.closest('.dia-valido').dataset.dia;
-                const equipe = el.dataset.equipe;
-                Planejador.funcoes.atualizarStatusCliente(clienteId, false);
-                el.remove();
-                Planejador.funcoes.atualizarContadorEquipe(dia, equipe);
-            });
-
-            el.addEventListener('dragstart', (e) => {
-                e.stopPropagation();
-                e.dataTransfer.setData('text/plain', JSON.stringify({ id: clienteId, nome: clienteNome }));
-                setTimeout(() => el.style.display = 'none', 0);
-            });
-            el.addEventListener('dragend', () => { el.style.display = 'block'; });
-            
-            containerEquipe.appendChild(el);
-            Planejador.funcoes.atualizarStatusCliente(clienteId, true);
-            Planejador.funcoes.atualizarContadorEquipe(dia, equipe);
-        },
-
-        carregarPlanejamentoInicial() {
-            const planejamento = Planejador.estado.planejamentoSalvo;
-            for (const dia in planejamento) {
-                planejamento[dia].forEach(item => {
-                    const nomeCliente = Planejador.estado.todosClientes[item.id_cliente];
-                    if (nomeCliente && item.equipe) {
-                        Planejador.funcoes.criarElementoClienteAlocado(dia, item.equipe, item.id_cliente, nomeCliente, item.lab_externo);
-                    }
-                });
-            }
-        },
-
-        async copiarDoMesAnterior() {
-            if (!confirm('Isso substituirá o planejamento atual na tela. Deseja continuar?')) return;
-            
-            try {
-                const response = await fetch(`/api/copiar_mes_anterior/${Planejador.config.ano}/${Planejador.config.mes}`);
-                if (!response.ok) throw new Error(`Erro na resposta do servidor: ${response.statusText}`);
-                
-                const planejamentoAnterior = await response.json();
-
-                document.querySelectorAll('.cliente-alocado').forEach(el => el.remove());
-                document.querySelectorAll('.status-icon').forEach(icon => icon.classList.replace('agendado', 'pendente'));
-                document.querySelectorAll('.contador-equipe').forEach(cont => cont.textContent = '(0)');
-                
-                planejamentoAnterior.forEach(item => {
-                    const nomeCliente = Planejador.estado.todosClientes[item.id_cliente];
-                    if (nomeCliente && item.equipe) {
-                        Planejador.funcoes.criarElementoClienteAlocado(item.dia, item.equipe, item.id_cliente, nomeCliente, item.lab_externo);
-                    }
-                });
-                alert(`${planejamentoAnterior.length} agendamentos copiados! Clique em "Salvar" para confirmar.`);
-            } catch (error) {
-                alert(`Erro ao copiar dados: ${error.message}`);
-            }
-        },
-
-        async salvarPlanejamentoAtual() {
-            const planejamentoParaSalvar = [];
-            document.querySelectorAll('.dia-valido .cliente-alocado').forEach(clienteEl => {
-                planejamentoParaSalvar.push({
-                    dia: parseInt(clienteEl.closest('.dia-valido').dataset.dia, 10),
-                    id_cliente: parseInt(clienteEl.dataset.clienteId, 10),
-                    equipe: clienteEl.dataset.equipe,
-                    lab_externo: clienteEl.querySelector('.lab-externo-check').checked
-                });
-            });
-
-            Planejador.elementos.salvarBtn.disabled = true;
-            Planejador.elementos.salvarBtn.textContent = 'Salvando...';
-
-            try {
-                const response = await fetch('/api/salvar_planejamento', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        ano: Planejador.config.ano,
-                        mes: Planejador.config.mes,
-                        planejamento: planejamentoParaSalvar
-                    })
-                });
-                const result = await response.json();
-                alert(response.ok ? `Sucesso: ${result.mensagem}` : `Erro: ${result.mensagem}`);
-            } catch (error) {
-                alert(`Erro de conexão ao salvar: ${error.message}`);
-            } finally {
-                Planejador.elementos.salvarBtn.disabled = false;
-                Planejador.elementos.salvarBtn.textContent = 'Salvar Planejamento';
-            }
-        }
-    },
-
-    init() {
-        this.elementos.copiarBtn = document.querySelector(this.config.selectors.copiarBtn);
-        this.elementos.salvarBtn = document.querySelector(this.config.selectors.salvarBtn);
-        
-        this.estado.todosClientes = Object.fromEntries(
-            [...document.querySelectorAll(this.config.selectors.clienteItem)].map(el => [el.dataset.id, el.dataset.nome])
-        );
-
-        this.funcoes.carregarPlanejamentoInicial();
-
-        document.querySelectorAll(this.config.selectors.clienteItem).forEach(c => {
-            c.addEventListener('dragstart', e => {
-                e.dataTransfer.setData('text/plain', JSON.stringify({ id: e.target.dataset.id, nome: e.target.dataset.nome }));
-            });
-        });
-        
-        document.querySelectorAll(this.config.selectors.equipeContainer).forEach(container => {
-            container.addEventListener('dragover', e => {
-                e.preventDefault();
-                container.classList.add('drag-over');
-            });
-            container.addEventListener('dragleave', () => container.classList.remove('drag-over'));
-            container.addEventListener('drop', e => {
-                e.preventDefault();
-                container.classList.remove('drag-over');
-                
-                const dados = JSON.parse(e.dataTransfer.getData('text/plain'));
-                const dia = container.closest(this.config.selectors.diaValido).dataset.dia;
-                const equipe = container.dataset.equipe;
-                
-                const elArrastado = document.querySelector(`.cliente-alocado[data-cliente-id='${dados.id}'][style*='display: none']`);
-                if (elArrastado) {
-                    const diaOrigem = elArrastado.closest(this.config.selectors.diaValido).dataset.dia;
-                    const equipeOrigem = elArrastado.dataset.equipe;
-                    elArrastado.remove();
-                    this.funcoes.atualizarContadorEquipe(diaOrigem, equipeOrigem);
-                }
-
-                this.funcoes.criarElementoClienteAlocado(dia, equipe, dados.id, dados.nome);
-            });
-        });
-
-        this.elementos.copiarBtn.addEventListener('click', () => this.funcoes.copiarDoMesAnterior());
-        this.elementos.salvarBtn.addEventListener('click', () => this.funcoes.salvarPlanejamentoAtual());
-    }
-};
-
-document.addEventListener('DOMContentLoaded', () => {
-    Planejador.init();
-});
-</script>
-
+    <!-- RODAPÉ -->
     <div class="footer">
-        Desenvolvido por <strong>Fabio Sena</strong>
+        Desenvolvido por 🧙‍♂️ <strong>Fabio Sena</strong> 🧙‍♂️ | Versão 1.5
     </div>
+
+    <!-- SCRIPT EXTERNO COM DADOS -->
+    <script id="planejador-script"
+            src="{{ url_for('static', filename='js/main.js') }}"
+            data-ano="{{ ano }}"
+            data-mes="{{ mes }}"
+            data-planejamento-json='{{ planejamento_json | safe }}'
+            defer>
+    </script>
 
 </body>
 </html>

@@ -3,106 +3,110 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gerenciar Clientes | by Fabio Sena</title>
-    <style>
-        body { 
-            font-family: sans-serif; 
-            background-color: #f4f4f9; 
-            padding: 20px; 
-            padding-bottom: 60px; /* Espaço para o rodapé */
-        }
-        .container { max-width: 900px; margin: auto; background-color: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        h1, h2 { color: #333; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
-        th { background-color: #f0f0f0; }
-        tr:nth-child(even) { background-color: #f9f9f9; }
-        .actions { display: flex; align-items: center; }
-        .actions a, .actions button { margin-right: 5px; text-decoration: none; color: white; padding: 5px 10px; border-radius: 4px; border: none; cursor: pointer; }
-        .edit-btn { background-color: #ffc107; }
-        .delete-btn { background-color: #dc3545; }
-        .form-group { margin-bottom: 15px; }
-        .form-group label { display: block; margin-bottom: 5px; }
-        .form-group input { width: 100%; padding: 8px; box-sizing: border-box; }
-        .btn-primary { background-color: #007bff; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; }
-        .nav-link { display: inline-block; margin-top: 20px; }
-        .footer {
-            position: fixed;
-            left: 0;
-            bottom: 0;
-            width: 100%;
-            background-color: #f1f1f1;
-            color: #555;
-            text-align: center;
-            padding: 5px 0;
-            font-size: 0.75em; /* Fonte um pouco menor */
-            font-style: italic; /* Texto em itálico */
-            border-top: 1px solid #ddd;
-            z-index: 100;
-        }
-    </style>
+    <title>Gerenciar Clientes | Planejador de Coletas</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <!-- Stylesheet -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css' ) }}">
 </head>
 <body>
-    <div class="container">
-        <h1>Gerenciar Clientes</h1>
-        <a href="{{ url_for('index_redirect') }}" class="nav-link">&larr; Voltar ao Planejador</a>
+
+    <div class="gerenciar-clientes-container painel">
+        <div class="painel-header">
+            <h2>Gerenciar Clientes</h2>
+            <a href="{{ url_for('index_redirect') }}" class="action-button btn-primario">Voltar ao Calendário</a>
+        </div>
 
         <!-- Formulário para Adicionar Novo Cliente -->
-        <h2>Adicionar Novo Cliente</h2>
-        <form action="{{ url_for('adicionar_cliente_action') }}" method="POST">
-            <div class="form-group">
-                <label for="nome_cliente">Nome do Cliente</label>
-                <input type="text" id="nome_cliente" name="nome_cliente" required>
-            </div>
-            <div class="form-group">
-                <label for="endereco">Endereço</label>
-                <input type="text" id="endereco" name="endereco">
-            </div>
-            <div class="form-group">
-                <label for="telefone">Telefone</label>
-                <input type="text" id="telefone" name="telefone">
-            </div>
-            <button type="submit" class="btn-primary">Adicionar Cliente</button>
-        </form>
-
-        <hr style="margin: 30px 0;">
+        <div class="form-cliente">
+            <h3>Adicionar Novo Cliente</h3>
+            <form action="{{ url_for('adicionar_cliente_action') }}" method="POST">
+                <div class="form-grupo">
+                    <label for="nome_cliente">Nome do Cliente</label>
+                    <input type="text" id="nome_cliente" name="nome_cliente" required>
+                </div>
+                <div class="form-grupo">
+                    <label for="endereco">Endereço</label>
+                    <input type="text" id="endereco" name="endereco">
+                </div>
+                <div class="form-grupo">
+                    <label for="telefone">Telefone</label>
+                    <input type="text" id="telefone" name="telefone">
+                </div>
+                <button type="submit" class="action-button btn-sucesso">Adicionar Cliente</button>
+            </form>
+        </div>
 
         <!-- Tabela de Clientes Existentes -->
-        <h2>Clientes Cadastrados</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Nome</th>
-                    <th>Endereço</th>
-                    <th>Telefone</th>
-                    <th>Ações</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for cliente in clientes %}
-                <tr>
-                    <form action="{{ url_for('editar_cliente_action', id_cliente=cliente.id) }}" method="POST">
-                        <td>{{ cliente.id }}</td>
-                        <td><input type="text" name="nome_cliente" value="{{ cliente.nome_cliente }}" required></td>
-                        <td><input type="text" name="endereco" value="{{ cliente.endereco or '' }}"></td>
-                        <td><input type="text" name="telefone" value="{{ cliente.telefone or '' }}"></td>
-                        <td class="actions">
-                            <button type="submit" class="edit-btn">Salvar</button>
-                    </form>
-                    <form action="{{ url_for('excluir_cliente_action', id_cliente=cliente.id) }}" method="POST" onsubmit="return confirm('Tem certeza que deseja excluir este cliente? Todos os seus agendamentos também serão removidos.');">
-                        <button type="submit" class="delete-btn">Excluir</button>
-                    </form>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+        <h3>Clientes Cadastrados</h3>
+        <div class="tabela-wrapper">
+            <table class="tabela-clientes">
+                <thead>
+                    <tr>
+                        <th class="col-nome">Nome</th>
+                        <th class="col-endereco">Endereço</th>
+                        <th class="col-telefone">Telefone</th>
+                        <th class="col-acoes">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for cliente in clientes %}
+                    <tr>
+                        <form action="{{ url_for('editar_cliente_action', id_cliente=cliente.id) }}" method="POST" id="edit-form-{{ cliente.id }}" class="form-linha-tabela">
+                            <td><input type="text" name="nome_cliente" value="{{ cliente.nome_cliente }}" required></td>
+                            <td><input type="text" name="endereco" value="{{ cliente.endereco or '' }}"></td>
+                            <td><input type="text" name="telefone" value="{{ cliente.telefone or '' }}"></td>
+                        </form>
+                        
+                        <td class="acoes">
+                            <button type="submit" form="edit-form-{{ cliente.id }}" class="action-button btn-sucesso">Salvar</button>
+                            <!-- CORREÇÃO: Removido o onsubmit daqui -->
+                            <form action="{{ url_for('excluir_cliente_action', id_cliente=cliente.id) }}" method="POST" class="form-excluir">
+                                <button type="submit" class="action-button btn-erro">Excluir</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
 
+    <!-- RODAPÉ -->
     <div class="footer">
-        Desenvolvido por <strong>Fabio Sena</strong>
+        Desenvolvido por 🧙‍♂️ <strong>Fabio Sena</strong> 🧙‍♂️ | Versão 1.5
     </div>
+
+    <!-- SCRIPT PARA CONFIRMAÇÃO DE EXCLUSÃO -->
+    <script>
+        document.querySelectorAll('.form-excluir').forEach(form => {
+            form.addEventListener('submit', function(event) {
+                event.preventDefault(); // Impede o envio imediato do formulário
+                
+                Swal.fire({
+                    title: 'Tem certeza?',
+                    text: "Esta ação não pode ser desfeita!",
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#3085d6',
+                    cancelButtonColor: '#d33',
+                    confirmButtonText: 'Sim, excluir!',
+                    cancelButtonText: 'Cancelar'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        form.submit(); // Se o usuário confirmar, envia o formulário
+                    }
+                });
+            });
+        });
+    </script>
 
 </body>
 </html>

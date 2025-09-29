@@ -2257,6 +2257,9 @@
    'C:\\Users\\binho\\OneDrive - General Water\\Projetos '
    'PY\\programacao_coletas\\venv\\Lib\\site-packages\\openpyxl\\xml\\functions.py',
    'PYMODULE'),
+  ('optparse',
+   'C:\\Users\\binho\\AppData\\Local\\Programs\\Python\\Python313\\Lib\\optparse.py',
+   'PYMODULE'),
   ('packaging',
    'C:\\Users\\binho\\OneDrive - General Water\\Projetos '
    'PY\\programacao_coletas\\venv\\Lib\\site-packages\\packaging\\__init__.py',
@@ -2340,6 +2343,12 @@
    'PYMODULE'),
   ('pprint',
    'C:\\Users\\binho\\AppData\\Local\\Programs\\Python\\Python313\\Lib\\pprint.py',
+   'PYMODULE'),
+  ('profile',
+   'C:\\Users\\binho\\AppData\\Local\\Programs\\Python\\Python313\\Lib\\profile.py',
+   'PYMODULE'),
+  ('pstats',
+   'C:\\Users\\binho\\AppData\\Local\\Programs\\Python\\Python313\\Lib\\pstats.py',
    'PYMODULE'),
   ('py_compile',
    'C:\\Users\\binho\\AppData\\Local\\Programs\\Python\\Python313\\Lib\\py_compile.py',
@@ -3126,6 +3135,62 @@
    'PYMODULE'),
   ('uuid',
    'C:\\Users\\binho\\AppData\\Local\\Programs\\Python\\Python313\\Lib\\uuid.py',
+   'PYMODULE'),
+  ('waitress',
+   'C:\\Users\\binho\\OneDrive - General Water\\Projetos '
+   'PY\\programacao_coletas\\venv\\Lib\\site-packages\\waitress\\__init__.py',
+   'PYMODULE'),
+  ('waitress.adjustments',
+   'C:\\Users\\binho\\OneDrive - General Water\\Projetos '
+   'PY\\programacao_coletas\\venv\\Lib\\site-packages\\waitress\\adjustments.py',
+   'PYMODULE'),
+  ('waitress.buffers',
+   'C:\\Users\\binho\\OneDrive - General Water\\Projetos '
+   'PY\\programacao_coletas\\venv\\Lib\\site-packages\\waitress\\buffers.py',
+   'PYMODULE'),
+  ('waitress.channel',
+   'C:\\Users\\binho\\OneDrive - General Water\\Projetos '
+   'PY\\programacao_coletas\\venv\\Lib\\site-packages\\waitress\\channel.py',
+   'PYMODULE'),
+  ('waitress.compat',
+   'C:\\Users\\binho\\OneDrive - General Water\\Projetos '
+   'PY\\programacao_coletas\\venv\\Lib\\site-packages\\waitress\\compat.py',
+   'PYMODULE'),
+  ('waitress.parser',
+   'C:\\Users\\binho\\OneDrive - General Water\\Projetos '
+   'PY\\programacao_coletas\\venv\\Lib\\site-packages\\waitress\\parser.py',
+   'PYMODULE'),
+  ('waitress.proxy_headers',
+   'C:\\Users\\binho\\OneDrive - General Water\\Projetos '
+   'PY\\programacao_coletas\\venv\\Lib\\site-packages\\waitress\\proxy_headers.py',
+   'PYMODULE'),
+  ('waitress.receiver',
+   'C:\\Users\\binho\\OneDrive - General Water\\Projetos '
+   'PY\\programacao_coletas\\venv\\Lib\\site-packages\\waitress\\receiver.py',
+   'PYMODULE'),
+  ('waitress.rfc7230',
+   'C:\\Users\\binho\\OneDrive - General Water\\Projetos '
+   'PY\\programacao_coletas\\venv\\Lib\\site-packages\\waitress\\rfc7230.py',
+   'PYMODULE'),
+  ('waitress.server',
+   'C:\\Users\\binho\\OneDrive - General Water\\Projetos '
+   'PY\\programacao_coletas\\venv\\Lib\\site-packages\\waitress\\server.py',
+   'PYMODULE'),
+  ('waitress.task',
+   'C:\\Users\\binho\\OneDrive - General Water\\Projetos '
+   'PY\\programacao_coletas\\venv\\Lib\\site-packages\\waitress\\task.py',
+   'PYMODULE'),
+  ('waitress.trigger',
+   'C:\\Users\\binho\\OneDrive - General Water\\Projetos '
+   'PY\\programacao_coletas\\venv\\Lib\\site-packages\\waitress\\trigger.py',
+   'PYMODULE'),
+  ('waitress.utilities',
+   'C:\\Users\\binho\\OneDrive - General Water\\Projetos '
+   'PY\\programacao_coletas\\venv\\Lib\\site-packages\\waitress\\utilities.py',
+   'PYMODULE'),
+  ('waitress.wasyncore',
+   'C:\\Users\\binho\\OneDrive - General Water\\Projetos '
+   'PY\\programacao_coletas\\venv\\Lib\\site-packages\\waitress\\wasyncore.py',
    'PYMODULE'),
   ('webbrowser',
    'C:\\Users\\binho\\AppData\\Local\\Programs\\Python\\Python313\\Lib\\webbrowser.py',
