@@ -6,56 +6,55 @@ import database_manager
 import locale
 import io
 from openpyxl import Workbook
+from openpyxl.drawing.image import Image
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 from openpyxl.utils import get_column_letter
+# REMOVIDO: As importações complexas de 'drawing' não são mais necessárias
+# from openpyxl.drawing.xdr import XDRPoint2D, XDRPositiveSize2D
+# from openpyxl.utils.units import pixels_to_EMU
+# from openpyxl.drawing.spreadsheet_drawing import TwoCellAnchor
+
 import sys
 import os
 import shutil
-from waitress import serve # Importa o servidor de produção Waitress
+from waitress import serve
 
-# --- LÓGICA DE CAMINHOS PARA PYINSTALLER E BANCO DE DADOS ---
+# --- LÓGICA DE CAMINHOS (sem alterações) ---
 def get_base_path():
-    """ Retorna o caminho base, seja para script ou para executável do PyInstaller. """
     if getattr(sys, 'frozen', False):
-        # Rodando como .exe, o caminho base é onde o executável está
         return os.path.dirname(sys.executable)
     else:
-        # Rodando como .py, o caminho base é o diretório do script
         return os.path.abspath(".")
 
 BASE_PATH = get_base_path()
 DB_NAME = 'database.db'
 DB_PATH = os.path.join(BASE_PATH, DB_NAME)
+LOGO_NAME = 'logo.png'
+LOGO_PATH = os.path.join(BASE_PATH, LOGO_NAME)
 
-IS_FROZEN = getattr(sys, 'frozen', False) # Variável para saber se estamos no .exe
+IS_FROZEN = getattr(sys, 'frozen', False)
 
 if IS_FROZEN:
-    # Se estiver rodando como um executável
     template_folder = os.path.join(sys._MEIPASS, 'templates')
-    # Adiciona o caminho para a pasta static
     static_folder = os.path.join(sys._MEIPASS, 'static')
     db_template_path = os.path.join(sys._MEIPASS, DB_NAME)
     if not os.path.exists(DB_PATH):
         shutil.copyfile(db_template_path, DB_PATH)
     app = Flask(__name__, template_folder=template_folder, static_folder=static_folder)
 else:
-    # Se estiver rodando como um script normal
     app = Flask(__name__)
 
-# Informa ao database_manager qual arquivo de banco de dados usar
 database_manager.NOME_BANCO_DADOS = DB_PATH
 
-# Definir o locale para português do Brasil
 try:
     locale.setlocale(locale.LC_ALL, 'pt_BR.UTF-8')
 except locale.Error:
     try:
         locale.setlocale(locale.LC_ALL, 'Portuguese_Brazil.1252')
     except locale.Error:
-        print("Locale pt_BR não encontrado. Nomes de meses podem aparecer em inglês.")
+        print("Locale pt_BR não encontrado.")
 
-# --- ROTAS PRINCIPAIS (CALENDÁRIO) ---
-
+# --- ROTAS (sem alterações até a exportação) ---
 @app.route('/')
 def index_redirect():
     hoje = datetime.today()
@@ -67,34 +66,18 @@ def calendario_view(ano, mes):
         return redirect(url_for('calendario_view', ano=ano - 1, mes=12))
     if mes > 12:
         return redirect(url_for('calendario_view', ano=ano + 1, mes=1))
-
     clientes = database_manager.buscar_todos_clientes()
     planejamento_mes = database_manager.buscar_planejamento_por_mes(ano, mes)
-
     planejamento_dict = {}
     for item in planejamento_mes:
         dia = item['dia']
         if dia not in planejamento_dict:
             planejamento_dict[dia] = []
         planejamento_dict[dia].append(item)
-
     cal = calendar.monthcalendar(ano, mes)
     mes_anterior, ano_anterior = (mes - 1, ano) if mes > 1 else (12, ano - 1)
     mes_proximo, ano_proximo = (mes + 1, ano) if mes < 12 else (1, ano + 1)
-
-    return render_template('index.html', 
-                           ano=ano, 
-                           mes=mes, 
-                           nome_mes=calendar.month_name[mes].capitalize(),
-                           calendario=cal, 
-                           clientes=clientes,
-                           planejamento_json=json.dumps(planejamento_dict),
-                           nav_anterior={'ano': ano_anterior, 'mes': mes_anterior},
-                           nav_proximo={'ano': ano_proximo, 'mes': mes_proximo},
-                           gerenciar_clientes_url=url_for('gerenciar_clientes_view')
-                          )
-
-# --- ROTAS DA API (PARA JAVASCRIPT) ---
+    return render_template('index.html', ano=ano, mes=mes, nome_mes=calendar.month_name[mes].capitalize(), calendario=cal, clientes=clientes, planejamento_json=json.dumps(planejamento_dict), nav_anterior={'ano': ano_anterior, 'mes': mes_anterior}, nav_proximo={'ano': ano_proximo, 'mes': mes_proximo}, gerenciar_clientes_url=url_for('gerenciar_clientes_view'))
 
 @app.route('/api/copiar_mes_anterior/<int:ano>/<int:mes>')
 def copiar_mes_anterior(ano, mes):
@@ -108,10 +91,8 @@ def salvar_planejamento():
     ano = dados.get('ano')
     mes = dados.get('mes')
     planejamento_do_mes = dados.get('planejamento')
-
     if not all([ano, mes, planejamento_do_mes is not None]):
         return jsonify({"status": "erro", "mensagem": "Dados incompletos recebidos."}), 400
-
     try:
         num_salvos = database_manager.salvar_planejamento_mes(ano, mes, planejamento_do_mes)
         nome_mes_pt = calendar.month_name[mes].capitalize()
@@ -120,14 +101,84 @@ def salvar_planejamento():
     except Exception as e:
         return jsonify({"status": "erro", "mensagem": f"Erro interno do servidor: {e}"}), 500
 
-# --- ROTA DE EXPORTAÇÃO PARA EXCEL ---
+# --- ROTA DE EXPORTAÇÃO PARA EXCEL (CORRIGIDA) ---
 
 @app.route('/exportar_excel/<int:ano>/<int:mes>')
 def exportar_excel(ano, mes):
     try:
+        wb = Workbook()
+        ws = wb.active
+        nome_mes_pt = calendar.month_name[mes].capitalize()
+        ws.title = f"{nome_mes_pt} {ano}"
+
+        # --- ESTILOS ---
+        bold_font = Font(bold=True, size=10)
+        normal_font = Font(size=10)
+        center_align = Alignment(horizontal='center', vertical='center')
+        thin_border = Border(left=Side(style='thin'), right=Side(style='thin'), top=Side(style='thin'), bottom=Side(style='thin'))
+        
+        # --- DEFINIÇÃO DE LARGURA E ALTURA ---
+        ws.column_dimensions['A'].width = 20
+        ws.column_dimensions['B'].width = 15
+        ws.column_dimensions['C'].width = 15
+        ws.column_dimensions['D'].width = 15
+        ws.column_dimensions['E'].width = 15
+        ws.column_dimensions['F'].width = 15
+        ws.column_dimensions['G'].width = 10
+        ws.row_dimensions[1].height = 25
+        ws.row_dimensions[2].height = 25
+        ws.row_dimensions[3].height = 25
+        ws.row_dimensions[4].height = 20
+
+        # --- CONSTRUÇÃO DO CABEÇALHO ---
+        ws.merge_cells('A1:A3')
+        if os.path.exists(LOGO_PATH):
+            img = Image(LOGO_PATH)
+            img.height = 70
+            img.width = 140
+            
+            # --- CORREÇÃO: MÉTODO SIMPLES E CORRETO PARA ADICIONAR A IMAGEM ---
+            # O posicionamento é feito diretamente na chamada add_image.
+            # A string 'A1' define a célula de ancoragem.
+            ws.add_image(img, 'A1')
+            # --- FIM DA CORREÇÃO ---
+
+        ws.merge_cells('B1:D3')
+        ws['B1'] = f"Cronograma de Coleta - {nome_mes_pt}/{ano}"
+        ws['B1'].alignment = center_align
+        ws['B1'].font = Font(bold=True, size=12)
+
+        ws['E1'] = "Código"
+        ws['F1'] = "Data"
+        ws['G1'] = "Revisão"
+        ws.merge_cells('E2:E3')
+        ws['E2'] = "F.082"
+        ws.merge_cells('F2:F3')
+        ws['F2'] = "22/03/2022"
+        ws.merge_cells('G2:G3')
+        ws['G2'] = "01"
+
+        ws['A4'] = "Registros"
+        ws['B4'] = "Atualizado em"
+        ws['C4'] = datetime.now().strftime('%d/%m/%Y')
+        ws['D4'] = "Responsável"
+        ws['E4'] = "RICARDO"
+        ws['F4'] = "Aprovado por"
+        ws['G4'] = "RICARDO"
+
+        for row in ws['A1':'G4']:
+            for cell in row:
+                cell.border = thin_border
+                cell.alignment = center_align
+                cell.font = normal_font
+                if (cell.row == 1 and cell.column > 4) or cell.row == 4:
+                    cell.font = bold_font
+        
+        ws['B1'].font = Font(bold=True, size=12)
+
+        # --- PREPARAÇÃO E CONSTRUÇÃO DO CALENDÁRIO (sem alterações) ---
         planejamento_mes = database_manager.buscar_planejamento_por_mes(ano, mes)
         clientes_db = {c['id']: c['nome_cliente'] for c in database_manager.buscar_todos_clientes()}
-        
         dados_calendario = {}
         legenda_necessaria = False
         for item in planejamento_mes:
@@ -136,49 +187,31 @@ def exportar_excel(ano, mes):
             cliente_id = item['id_cliente']
             cliente_nome = clientes_db.get(cliente_id, 'Cliente não encontrado')
             lab_externo = item.get('lab_externo', 0)
-            
             if lab_externo:
                 cliente_nome = f"★ {cliente_nome}"
                 legenda_necessaria = True
-
             if (dia, equipe) not in dados_calendario:
                 dados_calendario[(dia, equipe)] = []
             dados_calendario[(dia, equipe)].append(cliente_nome)
         
         cal = calendar.monthcalendar(ano, mes)
         dias_semana = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"]
-        
-        wb = Workbook()
-        ws = wb.active
-        nome_mes_pt = calendar.month_name[mes].capitalize()
-        ws.title = f"{nome_mes_pt} {ano}"
-        
-        header_font = Font(bold=True, size=14, color="FFFFFF")
-        header_fill = PatternFill(start_color="4F81BD", end_color="4F81BD", fill_type="solid")
-        header_align = Alignment(horizontal='center', vertical='center')
         day_header_font = Font(bold=True, size=12)
         day_header_fill = PatternFill(start_color="DDEBF7", end_color="DDEBF7", fill_type="solid")
-        cell_align = Alignment(horizontal='left', vertical='top', wrap_text=True)
-        thin_border = Border(left=Side(style='thin'), right=Side(style='thin'), top=Side(style='thin'), bottom=Side(style='thin'))
+        cell_align_cal = Alignment(horizontal='left', vertical='top', wrap_text=True)
         r01_fill = PatternFill(start_color="E0F7FA", end_color="E0F7FA", fill_type="solid")
         r02_fill = PatternFill(start_color="FFF9C4", end_color="FFF9C4", fill_type="solid")
-        
-        ws.merge_cells('A1:G1')
-        titulo_cell = ws['A1']
-        titulo_cell.value = f"Planejamento de Coletas - {nome_mes_pt} {ano}"
-        titulo_cell.font = header_font
-        titulo_cell.fill = header_fill
-        titulo_cell.alignment = header_align
-        
+
+        ws.row_dimensions[5].height = 30
         for col, dia_nome in enumerate(dias_semana, 1):
-            cell = ws.cell(row=2, column=col, value=dia_nome)
+            cell = ws.cell(row=5, column=col, value=dia_nome)
             cell.font = day_header_font
             cell.fill = day_header_fill
-            cell.alignment = header_align
+            cell.alignment = center_align
             cell.border = thin_border
             ws.column_dimensions[get_column_letter(col)].width = 25
 
-        row_offset = 3
+        row_offset = 6
         for semana in cal:
             max_clientes_r1 = 1
             max_clientes_r2 = 1
@@ -206,10 +239,10 @@ def exportar_excel(ano, mes):
                     dia_cell.font = Font(bold=True)
                     clientes_r1 = dados_calendario.get((dia, 'R1'), [])
                     r01_cell.value = "R01:\n" + "\n".join(f"- {c}" for c in clientes_r1)
-                    r01_cell.alignment = cell_align
+                    r01_cell.alignment = cell_align_cal
                     clientes_r2 = dados_calendario.get((dia, 'R2'), [])
                     r02_cell.value = "R02:\n" + "\n".join(f"- {c}" for c in clientes_r2)
-                    r02_cell.alignment = cell_align
+                    r02_cell.alignment = cell_align_cal
                     if col != 1 and col != 7:
                         r01_cell.fill = r01_fill
                         r02_cell.fill = r02_fill
@@ -217,28 +250,13 @@ def exportar_excel(ano, mes):
 
         if legenda_necessaria:
             linha_legenda = row_offset
-            ws.row_dimensions[linha_legenda].height = 20
             ws.merge_cells(start_row=linha_legenda, start_column=1, end_row=linha_legenda, end_column=7)
             legenda_cell = ws.cell(row=linha_legenda, column=1)
             legenda_cell.value = "★ = Acompanhamento Laboratório Externo"
             legenda_cell.font = Font(bold=True, color="d32f2f")
-            legenda_cell.alignment = Alignment(horizontal='left', vertical='center')
             row_offset += 1
 
-        linha_rodape = row_offset
-        ws.row_dimensions[linha_rodape].height = 20
-        ws.merge_cells(start_row=linha_rodape, start_column=1, end_row=linha_rodape, end_column=7)
-        rodape_cell = ws.cell(row=linha_rodape, column=1)
-        rodape_cell.value = f"Relatório gerado pelo Planejador de Rotas - Desenvolvido por Fabio Sena ({datetime.now().strftime('%d/%m/%Y %H:%M')})"
-        rodape_cell.font = Font(italic=True, size=8, color="808080")
-        rodape_cell.alignment = Alignment(horizontal='right', vertical='center')
-        row_offset += 1
-
-        for i in range(8, 703):
-            ws.column_dimensions[get_column_letter(i)].hidden = True
-        for i in range(row_offset, row_offset + 100):
-            ws.row_dimensions[i].hidden = True
-
+        # --- ENVIO DO ARQUIVO ---
         buffer = io.BytesIO()
         wb.save(buffer)
         buffer.seek(0)
@@ -247,10 +265,11 @@ def exportar_excel(ano, mes):
         
     except Exception as e:
         print(f"Erro detalhado ao gerar Excel: {e}")
+        if isinstance(e, FileNotFoundError):
+            return jsonify({"status": "erro", "mensagem": f"Erro ao gerar Excel: Arquivo '{LOGO_NAME}' não encontrado na pasta do projeto."}), 500
         return jsonify({"status": "erro", "mensagem": f"Erro ao gerar Excel: {str(e)}"}), 500
 
-# --- ROTAS PARA GERENCIAMENTO DE CLIENTES (CRUD) ---
-
+# --- ROTAS DE GERENCIAMENTO E PONTO DE ENTRADA (sem alterações) ---
 @app.route('/clientes')
 def gerenciar_clientes_view():
     clientes = database_manager.buscar_todos_clientes()
@@ -279,15 +298,11 @@ def excluir_cliente_action(id_cliente):
     database_manager.excluir_cliente(id_cliente)
     return redirect(url_for('gerenciar_clientes_view'))
 
-# --- PONTO DE ENTRADA DA APLICAÇÃO ---
-
 if __name__ == '__main__':
     database_manager.inicializar() 
     if IS_FROZEN:
-        # No executável, use o servidor Waitress para estabilidade
         print("Iniciando servidor de produção Waitress na porta 5000...")
         serve(app, host='127.0.0.1', port=5000)
     else:
-        # No desenvolvimento, use o servidor Flask com debug para facilitar
         print("Iniciando servidor de desenvolvimento Flask...")
         app.run(debug=True, host='127.0.0.1', port=5000)
