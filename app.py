@@ -16,7 +16,7 @@ import os
 import shutil
 from waitress import serve
 
-# --- LÓGICA DE CAMINHOS E CONFIGURAÇÃO INICIAL (sem alterações) ---
+# --- LÓGICA DE CAMINHOS E CONFIGURAÇÃO INICIAL ---
 def get_base_path():
     if getattr(sys, 'frozen', False):
         return os.path.dirname(sys.executable)
@@ -41,7 +41,6 @@ if IS_FROZEN:
 else:
     app = Flask(__name__)
 
-# NOVO: Adiciona uma chave secreta, necessária para o 'flash' funcionar
 app.secret_key = 'uma-chave-secreta-muito-segura'
 
 database_manager.NOME_BANCO_DADOS = DB_PATH
@@ -54,7 +53,7 @@ except locale.Error:
     except locale.Error:
         print("Locale pt_BR não encontrado.")
 
-# --- ROTAS DO CALENDÁRIO E API (sem alterações) ---
+# --- ROTAS DO CALENDÁRIO E API ---
 @app.route('/')
 def index_redirect():
     hoje = datetime.today()
@@ -66,7 +65,12 @@ def calendario_view(ano, mes):
         return redirect(url_for('calendario_view', ano=ano - 1, mes=12))
     if mes > 12:
         return redirect(url_for('calendario_view', ano=ano + 1, mes=1))
-    clientes = database_manager.buscar_todos_clientes()
+
+    calendar.setfirstweekday(calendar.SUNDAY)
+
+    # MODIFICAÇÃO: Busca os clientes e já ordena por nome (A-Z)
+    clientes = sorted(database_manager.buscar_todos_clientes(), key=lambda c: c['nome_cliente'].lower())
+    
     planejamento_mes = database_manager.buscar_planejamento_por_mes(ano, mes)
     planejamento_dict = {}
     for item in planejamento_mes:
@@ -74,10 +78,22 @@ def calendario_view(ano, mes):
         if dia not in planejamento_dict:
             planejamento_dict[dia] = []
         planejamento_dict[dia].append(item)
+    
     cal = calendar.monthcalendar(ano, mes)
+    
     mes_anterior, ano_anterior = (mes - 1, ano) if mes > 1 else (12, ano - 1)
     mes_proximo, ano_proximo = (mes + 1, ano) if mes < 12 else (1, ano + 1)
-    return render_template('index.html', ano=ano, mes=mes, nome_mes=calendar.month_name[mes].capitalize(), calendario=cal, clientes=clientes, planejamento_json=json.dumps(planejamento_dict), nav_anterior={'ano': ano_anterior, 'mes': mes_anterior}, nav_proximo={'ano': ano_proximo, 'mes': mes_proximo}, gerenciar_clientes_url=url_for('gerenciar_clientes_view'))
+    
+    return render_template('index.html', 
+                           ano=ano, 
+                           mes=mes, 
+                           nome_mes=calendar.month_name[mes].capitalize(), 
+                           calendario=cal, 
+                           clientes=clientes, 
+                           planejamento_json=json.dumps(planejamento_dict), 
+                           nav_anterior={'ano': ano_anterior, 'mes': mes_anterior}, 
+                           nav_proximo={'ano': ano_proximo, 'mes': mes_proximo}, 
+                           gerenciar_clientes_url=url_for('gerenciar_clientes_view'))
 
 @app.route('/api/copiar_mes_anterior/<int:ano>/<int:mes>')
 def copiar_mes_anterior(ano, mes):
@@ -101,10 +117,12 @@ def salvar_planejamento():
     except Exception as e:
         return jsonify({"status": "erro", "mensagem": f"Erro interno do servidor: {e}"}), 500
 
-# --- ROTA DE EXPORTAÇÃO (sem alterações) ---
+# --- ROTA DE EXPORTAÇÃO ---
 @app.route('/exportar_excel/<int:ano>/<int:mes>')
 def exportar_excel(ano, mes):
     try:
+        calendar.setfirstweekday(calendar.SUNDAY)
+        
         wb = Workbook()
         ws = wb.active
         nome_mes_pt = calendar.month_name[mes].capitalize()
@@ -241,11 +259,12 @@ def exportar_excel(ano, mes):
             return jsonify({"status": "erro", "mensagem": f"Erro ao gerar Excel: Arquivo '{LOGO_NAME}' não encontrado na pasta do projeto."}), 500
         return jsonify({"status": "erro", "mensagem": f"Erro ao gerar Excel: {str(e)}"}), 500
 
-# --- ROTAS PARA GERENCIAMENTO DE CLIENTES (MODIFICADAS) ---
+# --- ROTAS PARA GERENCIAMENTO DE CLIENTES ---
 
 @app.route('/clientes')
 def gerenciar_clientes_view():
-    clientes = database_manager.buscar_todos_clientes()
+    # MODIFICAÇÃO: Busca os clientes e já ordena por nome (A-Z)
+    clientes = sorted(database_manager.buscar_todos_clientes(), key=lambda c: c['nome_cliente'].lower())
     return render_template('gerenciar_clientes.html', clientes=clientes)
 
 @app.route('/clientes/adicionar', methods=['POST'])
@@ -255,7 +274,6 @@ def adicionar_cliente_action():
     telefone = request.form.get('telefone')
     if nome:
         database_manager.adicionar_cliente(nome, endereco, telefone)
-        # MODIFICADO: Adiciona uma mensagem flash
         flash(f"Cliente '{nome}' adicionado com sucesso!", 'success')
     return redirect(url_for('gerenciar_clientes_view'))
 
@@ -266,18 +284,16 @@ def editar_cliente_action(id_cliente):
     telefone = request.form.get('telefone')
     if nome:
         database_manager.editar_cliente(id_cliente, nome, endereco, telefone)
-        # MODIFICADO: Adiciona uma mensagem flash
         flash(f"Cliente '{nome}' atualizado com sucesso!", 'success')
     return redirect(url_for('gerenciar_clientes_view'))
 
 @app.route('/clientes/excluir/<int:id_cliente>', methods=['POST'])
 def excluir_cliente_action(id_cliente):
     database_manager.excluir_cliente(id_cliente)
-    # MODIFICADO: Adiciona uma mensagem flash
     flash("Cliente excluído com sucesso!", 'success')
     return redirect(url_for('gerenciar_clientes_view'))
 
-# --- PONTO DE ENTRADA DA APLICAÇÃO (sem alterações) ---
+# --- PONTO DE ENTRADA DA APLICAÇÃO ---
 if __name__ == '__main__':
     database_manager.inicializar() 
     if IS_FROZEN:
@@ -285,4 +301,4 @@ if __name__ == '__main__':
         serve(app, host='127.0.0.1', port=5000)
     else:
         print("Iniciando servidor de desenvolvimento Flask...")
-        app.run(debug=True, host='127.0.0.1', port=5000)
+        app.run(debug=True, host='12-7.0.0.1', port=5000)
