@@ -22,10 +22,16 @@
         <!-- PAINEL DA ESQUERDA -->
         <div id="left-panel">
             <div id="lista-clientes-container">
-                <div style="display: flex; justify-content: space-between; align-items: center; padding-right: 10px; margin-bottom: 15px;">
+                <div class="painel-header-lateral">
                     <h3>Clientes</h3>
-                    <a href="{{ gerenciar_clientes_url }}" title="Gerenciar Clientes" style="text-decoration: none; font-size: 1.5em;">&#9881;</a>
+                    <a href="{{ gerenciar_clientes_url }}" title="Gerenciar Clientes" class="gerenciar-btn">&#9881;</a>
                 </div>
+
+                <!-- NOVO: Barra de Pesquisa -->
+                <div class="search-container">
+                    <input type="search" id="search-cliente" placeholder="Buscar cliente...">
+                </div>
+                
                 <div id="lista-clientes">
                     {% for cliente in clientes %}
                         <div class="cliente-item" draggable="true" data-id="{{ cliente.id }}" data-nome="{{ cliente.nome_cliente }}">
@@ -72,12 +78,10 @@
         </div>
     </div>
 
-    <!-- RODAPÉ -->
     <div class="footer">
-        Desenvolvido por 🧙‍♂️ <strong>Fabio Sena</strong> 🧙‍♂️ | Versão 1.5
+        Desenvolvido por 🧙‍♂️ <strong>Fabio Sena</strong> 🧙‍♂️ | Versão 1.3
     </div>
 
-    <!-- SCRIPT EXTERNO COM DADOS -->
     <script id="planejador-script"
             src="{{ url_for('static', filename='js/main.js') }}"
             data-ano="{{ ano }}"

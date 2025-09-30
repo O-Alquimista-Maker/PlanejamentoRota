@@ -1,4 +1,5 @@
-from flask import Flask, render_template, request, jsonify, redirect, url_for, send_file
+# No início do arquivo, certifique-se de que 'flash' está importado
+from flask import Flask, render_template, request, jsonify, redirect, url_for, send_file, flash
 import calendar
 from datetime import datetime
 import json
@@ -9,17 +10,13 @@ from openpyxl import Workbook
 from openpyxl.drawing.image import Image
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 from openpyxl.utils import get_column_letter
-# REMOVIDO: As importações complexas de 'drawing' não são mais necessárias
-# from openpyxl.drawing.xdr import XDRPoint2D, XDRPositiveSize2D
-# from openpyxl.utils.units import pixels_to_EMU
-# from openpyxl.drawing.spreadsheet_drawing import TwoCellAnchor
 
 import sys
 import os
 import shutil
 from waitress import serve
 
-# --- LÓGICA DE CAMINHOS (sem alterações) ---
+# --- LÓGICA DE CAMINHOS E CONFIGURAÇÃO INICIAL (sem alterações) ---
 def get_base_path():
     if getattr(sys, 'frozen', False):
         return os.path.dirname(sys.executable)
@@ -44,6 +41,9 @@ if IS_FROZEN:
 else:
     app = Flask(__name__)
 
+# NOVO: Adiciona uma chave secreta, necessária para o 'flash' funcionar
+app.secret_key = 'uma-chave-secreta-muito-segura'
+
 database_manager.NOME_BANCO_DADOS = DB_PATH
 
 try:
@@ -54,7 +54,7 @@ except locale.Error:
     except locale.Error:
         print("Locale pt_BR não encontrado.")
 
-# --- ROTAS (sem alterações até a exportação) ---
+# --- ROTAS DO CALENDÁRIO E API (sem alterações) ---
 @app.route('/')
 def index_redirect():
     hoje = datetime.today()
@@ -101,8 +101,7 @@ def salvar_planejamento():
     except Exception as e:
         return jsonify({"status": "erro", "mensagem": f"Erro interno do servidor: {e}"}), 500
 
-# --- ROTA DE EXPORTAÇÃO PARA EXCEL (CORRIGIDA) ---
-
+# --- ROTA DE EXPORTAÇÃO (sem alterações) ---
 @app.route('/exportar_excel/<int:ano>/<int:mes>')
 def exportar_excel(ano, mes):
     try:
@@ -110,14 +109,10 @@ def exportar_excel(ano, mes):
         ws = wb.active
         nome_mes_pt = calendar.month_name[mes].capitalize()
         ws.title = f"{nome_mes_pt} {ano}"
-
-        # --- ESTILOS ---
         bold_font = Font(bold=True, size=10)
         normal_font = Font(size=10)
         center_align = Alignment(horizontal='center', vertical='center')
         thin_border = Border(left=Side(style='thin'), right=Side(style='thin'), top=Side(style='thin'), bottom=Side(style='thin'))
-        
-        # --- DEFINIÇÃO DE LARGURA E ALTURA ---
         ws.column_dimensions['A'].width = 20
         ws.column_dimensions['B'].width = 15
         ws.column_dimensions['C'].width = 15
@@ -129,25 +124,16 @@ def exportar_excel(ano, mes):
         ws.row_dimensions[2].height = 25
         ws.row_dimensions[3].height = 25
         ws.row_dimensions[4].height = 20
-
-        # --- CONSTRUÇÃO DO CABEÇALHO ---
         ws.merge_cells('A1:A3')
         if os.path.exists(LOGO_PATH):
             img = Image(LOGO_PATH)
             img.height = 70
             img.width = 140
-            
-            # --- CORREÇÃO: MÉTODO SIMPLES E CORRETO PARA ADICIONAR A IMAGEM ---
-            # O posicionamento é feito diretamente na chamada add_image.
-            # A string 'A1' define a célula de ancoragem.
             ws.add_image(img, 'A1')
-            # --- FIM DA CORREÇÃO ---
-
         ws.merge_cells('B1:D3')
         ws['B1'] = f"Cronograma de Coleta - {nome_mes_pt}/{ano}"
         ws['B1'].alignment = center_align
         ws['B1'].font = Font(bold=True, size=12)
-
         ws['E1'] = "Código"
         ws['F1'] = "Data"
         ws['G1'] = "Revisão"
@@ -157,7 +143,6 @@ def exportar_excel(ano, mes):
         ws['F2'] = "22/03/2022"
         ws.merge_cells('G2:G3')
         ws['G2'] = "01"
-
         ws['A4'] = "Registros"
         ws['B4'] = "Atualizado em"
         ws['C4'] = datetime.now().strftime('%d/%m/%Y')
@@ -165,7 +150,6 @@ def exportar_excel(ano, mes):
         ws['E4'] = "RICARDO"
         ws['F4'] = "Aprovado por"
         ws['G4'] = "RICARDO"
-
         for row in ws['A1':'G4']:
             for cell in row:
                 cell.border = thin_border
@@ -173,10 +157,7 @@ def exportar_excel(ano, mes):
                 cell.font = normal_font
                 if (cell.row == 1 and cell.column > 4) or cell.row == 4:
                     cell.font = bold_font
-        
         ws['B1'].font = Font(bold=True, size=12)
-
-        # --- PREPARAÇÃO E CONSTRUÇÃO DO CALENDÁRIO (sem alterações) ---
         planejamento_mes = database_manager.buscar_planejamento_por_mes(ano, mes)
         clientes_db = {c['id']: c['nome_cliente'] for c in database_manager.buscar_todos_clientes()}
         dados_calendario = {}
@@ -193,7 +174,6 @@ def exportar_excel(ano, mes):
             if (dia, equipe) not in dados_calendario:
                 dados_calendario[(dia, equipe)] = []
             dados_calendario[(dia, equipe)].append(cliente_nome)
-        
         cal = calendar.monthcalendar(ano, mes)
         dias_semana = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"]
         day_header_font = Font(bold=True, size=12)
@@ -201,7 +181,6 @@ def exportar_excel(ano, mes):
         cell_align_cal = Alignment(horizontal='left', vertical='top', wrap_text=True)
         r01_fill = PatternFill(start_color="E0F7FA", end_color="E0F7FA", fill_type="solid")
         r02_fill = PatternFill(start_color="FFF9C4", end_color="FFF9C4", fill_type="solid")
-
         ws.row_dimensions[5].height = 30
         for col, dia_nome in enumerate(dias_semana, 1):
             cell = ws.cell(row=5, column=col, value=dia_nome)
@@ -210,7 +189,6 @@ def exportar_excel(ano, mes):
             cell.alignment = center_align
             cell.border = thin_border
             ws.column_dimensions[get_column_letter(col)].width = 25
-
         row_offset = 6
         for semana in cal:
             max_clientes_r1 = 1
@@ -219,11 +197,9 @@ def exportar_excel(ano, mes):
                 if dia != 0:
                     max_clientes_r1 = max(max_clientes_r1, len(dados_calendario.get((dia, 'R1'), [])))
                     max_clientes_r2 = max(max_clientes_r2, len(dados_calendario.get((dia, 'R2'), [])))
-            
             ws.row_dimensions[row_offset].height = 20
             ws.row_dimensions[row_offset + 1].height = (max_clientes_r1 + 1) * 15
             ws.row_dimensions[row_offset + 2].height = (max_clientes_r2 + 1) * 15
-
             for col, dia in enumerate(semana, 1):
                 dia_cell = ws.cell(row=row_offset, column=col)
                 r01_cell = ws.cell(row=row_offset + 1, column=col)
@@ -247,7 +223,6 @@ def exportar_excel(ano, mes):
                         r01_cell.fill = r01_fill
                         r02_cell.fill = r02_fill
             row_offset += 3
-
         if legenda_necessaria:
             linha_legenda = row_offset
             ws.merge_cells(start_row=linha_legenda, start_column=1, end_row=linha_legenda, end_column=7)
@@ -255,21 +230,19 @@ def exportar_excel(ano, mes):
             legenda_cell.value = "★ = Acompanhamento Laboratório Externo"
             legenda_cell.font = Font(bold=True, color="d32f2f")
             row_offset += 1
-
-        # --- ENVIO DO ARQUIVO ---
         buffer = io.BytesIO()
         wb.save(buffer)
         buffer.seek(0)
         nome_arquivo = f"Planejamento_{nome_mes_pt}_{ano}.xlsx"
         return send_file(buffer, as_attachment=True, download_name=nome_arquivo, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-        
     except Exception as e:
         print(f"Erro detalhado ao gerar Excel: {e}")
         if isinstance(e, FileNotFoundError):
             return jsonify({"status": "erro", "mensagem": f"Erro ao gerar Excel: Arquivo '{LOGO_NAME}' não encontrado na pasta do projeto."}), 500
         return jsonify({"status": "erro", "mensagem": f"Erro ao gerar Excel: {str(e)}"}), 500
 
-# --- ROTAS DE GERENCIAMENTO E PONTO DE ENTRADA (sem alterações) ---
+# --- ROTAS PARA GERENCIAMENTO DE CLIENTES (MODIFICADAS) ---
+
 @app.route('/clientes')
 def gerenciar_clientes_view():
     clientes = database_manager.buscar_todos_clientes()
@@ -282,6 +255,8 @@ def adicionar_cliente_action():
     telefone = request.form.get('telefone')
     if nome:
         database_manager.adicionar_cliente(nome, endereco, telefone)
+        # MODIFICADO: Adiciona uma mensagem flash
+        flash(f"Cliente '{nome}' adicionado com sucesso!", 'success')
     return redirect(url_for('gerenciar_clientes_view'))
 
 @app.route('/clientes/editar/<int:id_cliente>', methods=['POST'])
@@ -291,13 +266,18 @@ def editar_cliente_action(id_cliente):
     telefone = request.form.get('telefone')
     if nome:
         database_manager.editar_cliente(id_cliente, nome, endereco, telefone)
+        # MODIFICADO: Adiciona uma mensagem flash
+        flash(f"Cliente '{nome}' atualizado com sucesso!", 'success')
     return redirect(url_for('gerenciar_clientes_view'))
 
 @app.route('/clientes/excluir/<int:id_cliente>', methods=['POST'])
 def excluir_cliente_action(id_cliente):
     database_manager.excluir_cliente(id_cliente)
+    # MODIFICADO: Adiciona uma mensagem flash
+    flash("Cliente excluído com sucesso!", 'success')
     return redirect(url_for('gerenciar_clientes_view'))
 
+# --- PONTO DE ENTRADA DA APLICAÇÃO (sem alterações) ---
 if __name__ == '__main__':
     database_manager.inicializar() 
     if IS_FROZEN:

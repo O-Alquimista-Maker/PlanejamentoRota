@@ -11,7 +11,8 @@ const Planejador = {
             contadorEquipe: '.contador-equipe',
             copiarBtn: '#copiar-btn',
             salvarBtn: '#salvar-btn',
-            scriptTag: '#planejador-script'
+            scriptTag: '#planejador-script',
+            searchCliente: '#search-cliente' // NOVO: Seletor para a busca
         }
     },
 
@@ -23,15 +24,30 @@ const Planejador = {
     },
 
     funcoes: {
-        // Função auxiliar para notificações
+        notificarToast(icon, title) {
+            const Toast = Swal.mixin({
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true,
+                didOpen: (toast) => {
+                    toast.addEventListener('mouseenter', Swal.stopTimer);
+                    toast.addEventListener('mouseleave', Swal.resumeTimer);
+                }
+            });
+
+            Toast.fire({
+                icon: icon,
+                title: title
+            });
+        },
+
         notificar(icon, title, text = '') {
-            Swal.fire({
+            return Swal.fire({
                 icon: icon,
                 title: title,
                 text: text,
-                timer: icon === 'success' ? 2000 : 4000,
-                timerProgressBar: true,
-                showConfirmButton: false
             });
         },
 
@@ -203,7 +219,7 @@ const Planejador = {
                 });
                 const result = await response.json();
                 if (response.ok) {
-                    this.notificar('success', 'Salvo!', result.mensagem);
+                    this.notificarToast('success', 'Planejamento salvo!');
                 } else {
                     this.notificar('error', 'Erro ao Salvar', result.mensagem);
                 }
@@ -213,6 +229,26 @@ const Planejador = {
                 Planejador.elementos.salvarBtn.disabled = false;
                 Planejador.elementos.salvarBtn.textContent = 'Salvar Planejamento';
             }
+        },
+
+        // NOVO: Função para configurar a lógica da barra de busca
+        configurarBusca() {
+            const campoBusca = document.querySelector(Planejador.config.selectors.searchCliente);
+            if (!campoBusca) return;
+
+            campoBusca.addEventListener('input', (e) => {
+                const termoBusca = e.target.value.toLowerCase();
+                const todosClientes = document.querySelectorAll(Planejador.config.selectors.clienteItem);
+
+                todosClientes.forEach(clienteEl => {
+                    const nomeCliente = clienteEl.dataset.nome.toLowerCase();
+                    if (nomeCliente.includes(termoBusca)) {
+                        clienteEl.style.display = 'flex';
+                    } else {
+                        clienteEl.style.display = 'none';
+                    }
+                });
+            });
         }
     },
 
@@ -242,6 +278,7 @@ const Planejador = {
 
         this.funcoes.carregarPlanejamentoInicial();
 
+        // Configura eventos de drag and drop
         document.querySelectorAll(this.config.selectors.clienteItem).forEach(c => {
             c.addEventListener('dragstart', e => {
                 e.dataTransfer.setData('text/plain', JSON.stringify({ id: e.target.dataset.id, nome: e.target.dataset.nome }));
@@ -274,8 +311,12 @@ const Planejador = {
             });
         });
 
+        // Configura botões de ação
         this.elementos.copiarBtn.addEventListener('click', () => this.funcoes.copiarDoMesAnterior());
         this.elementos.salvarBtn.addEventListener('click', () => this.funcoes.salvarPlanejamentoAtual());
+
+        // NOVO: Chama a função que configura a busca
+        this.funcoes.configurarBusca();
     }
 };
 
