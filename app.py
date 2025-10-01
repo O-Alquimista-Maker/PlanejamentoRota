@@ -301,4 +301,6 @@ if __name__ == '__main__':
         serve(app, host='127.0.0.1', port=5000)
     else:
         print("Iniciando servidor de desenvolvimento Flask...")
-        app.run(debug=True, host='12-7.0.0.1', port=5000)
+        # Linha correta
+        app.run(debug=True, host='127.0.0.1', port=5000)
+
